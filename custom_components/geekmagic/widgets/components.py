@@ -55,7 +55,7 @@ Justify = Literal["start", "center", "end", "space-between", "space-around"]
 
 
 def _to_justify(justify: Justify) -> JustifyContent:
-    """Convert justify string to stretchable enum."""
+    """Convert justify string to flex enum."""
     mapping = {
         "start": JustifyContent.START,
         "center": JustifyContent.CENTER,
@@ -67,7 +67,7 @@ def _to_justify(justify: Justify) -> JustifyContent:
 
 
 def _to_align(align: Align) -> AlignItems:
-    """Convert align string to stretchable enum."""
+    """Convert align string to flex enum."""
     mapping = {
         "start": AlignItems.START,
         "center": AlignItems.CENTER,
@@ -476,7 +476,7 @@ class Row(Component):
         inner_w = width - self.padding * 2
         inner_h = height - self.padding * 2
 
-        # Build stretchable layout tree
+        # Build flex layout tree
         root = Node(
             flex_direction=FlexDirection.ROW,
             justify_content=_to_justify(self.justify),
@@ -552,7 +552,7 @@ class Column(Component):
         inner_w = width - self.padding * 2
         inner_h = height - self.padding * 2
 
-        # Build stretchable layout tree
+        # Build flex layout tree
         root = Node(
             flex_direction=FlexDirection.COLUMN,
             justify_content=_to_justify(self.justify),
@@ -1116,6 +1116,7 @@ __all__ = [
     "Component",
     "Empty",
     "FillText",
+    "Flex",
     "Icon",
     "IconValueDisplay",
     "Justify",

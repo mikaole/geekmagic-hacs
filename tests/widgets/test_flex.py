@@ -249,6 +249,43 @@ class TestColumnDirection:
         assert b.x == 0 and b.y == 30 and b.width == 100 and b.height == 170
 
 
+class TestOverflowShrink:
+    """When children overflow, non-flex children shrink proportionally.
+
+    This mirrors stretchable's default ``flex_shrink=1`` behaviour and is
+    relied on by widgets like the multi-progress fitness display, where
+    multiple stacked rows each carry their own intrinsic height. Without
+    shrink the third row would clip past the bottom of the container.
+    """
+
+    def test_uniform_shrink_to_fit(self) -> None:
+        root = Node(flex_direction=FlexDirection.COLUMN, size=(100, 60))
+        root.add(Node(key="a", size=(100 * PCT, 30)))
+        root.add(Node(key="b", size=(100 * PCT, 30)))
+        root.add(Node(key="c", size=(100 * PCT, 30)))
+        root.compute_layout()
+        # Total base = 90, container = 60, no gap → factor = 60/90 = 2/3.
+        assert root.find("/a").get_box().height == pytest.approx(20)
+        assert root.find("/b").get_box().height == pytest.approx(20)
+        assert root.find("/c").get_box().height == pytest.approx(20)
+
+    def test_shrink_with_flex_grow_keeps_grower_at_zero(self) -> None:
+        # When a flex_grow child has AUTO base size and siblings overflow
+        # the container, the grower stays at 0 and only fixed siblings
+        # shrink. This is current behaviour — changing it would require
+        # implementing distinct flex_shrink weights.
+        root = Node(flex_direction=FlexDirection.ROW, size=(50, 30))
+        root.add(Node(key="a", size=(40, 30)))
+        root.add(Node(key="grow", size=(AUTO, 30), flex_grow=1))
+        root.add(Node(key="b", size=(40, 30)))
+        root.compute_layout()
+        # Container 50, gap 0, base 80, factor = 50/80 = 0.625.
+        # Fixed children shrink uniformly; grower stays at 0 (no slack).
+        assert root.find("/grow").get_box().width == 0
+        assert root.find("/a").get_box().width == pytest.approx(25)
+        assert root.find("/b").get_box().width == pytest.approx(25)
+
+
 class TestGap:
     def test_gap_adds_between_children_only(self) -> None:
         root = Node(flex_direction=FlexDirection.ROW, gap=20, size=(200, 50))

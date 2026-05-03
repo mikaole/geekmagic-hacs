@@ -6,8 +6,9 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from ._header import header_height_for, header_mode, render_label_value_header
 from .base import Widget, WidgetConfig
-from .components import THEME_TEXT_SECONDARY, Color, Column, Component, Row, Spacer, Text
+from .components import THEME_TEXT_SECONDARY, Color, Component
 
 if TYPE_CHECKING:
     from ..render_context import RenderContext
@@ -100,46 +101,17 @@ class CandlestickDisplay(Component):
         """Render candlestick chart with header and candles."""
         font_label = ctx.get_font("small")
         padding = int(width * 0.08)
-
-        # Three header modes: inline (one row), stacked (label over value),
-        # or value_only (label dropped) — depending on whether they fit and
-        # how much vertical room is available.
         inner_w = width - padding * 2
+
         value_str = (
             f"{self.current_value:.1f}{self.unit}"
             if self.show_value and self.current_value is not None
             else ""
         )
-        has_label = bool(self.label)
-        has_value = bool(value_str)
-        font_value = ctx.get_font("regular")
-        _, label_h = ctx.get_text_size("Hg", font_label) if has_label else (0, 0)
-        _, value_h = ctx.get_text_size("Hg", font_value) if has_value else (0, 0)
-
-        mode = "empty"
-        if has_label and has_value:
-            label_w, _ = ctx.get_text_size(self.label.upper(), font_label)
-            value_w, _ = ctx.get_text_size(value_str, font_value)
-            inline_fits = label_w + value_w + 4 <= inner_w
-            stacked_h_needed = label_h + value_h + 4
-            stack_fits = stacked_h_needed <= int(height * 0.32) and height >= 90
-            if inline_fits:
-                mode = "inline"
-            elif stack_fits:
-                mode = "stacked"
-            else:
-                mode = "value_only"
-        elif has_value:
-            mode = "value_only"
-        elif has_label:
-            mode = "label_only"
-
-        if mode == "stacked":
-            header_height = label_h + value_h + 8
-        elif mode in ("inline", "value_only", "label_only"):
-            header_height = max(int(height * 0.18), max(label_h, value_h) + 4)
-        else:
-            header_height = int(height * 0.08)
+        mode = header_mode(ctx, label=self.label, value=value_str, inner_w=inner_w, height=height)
+        _, label_h = ctx.get_text_size("Hg", font_label) if self.label else (0, 0)
+        _, value_h = ctx.get_text_size("Hg", ctx.get_font("regular")) if value_str else (0, 0)
+        header_height = header_height_for(mode, label_h=label_h, value_h=value_h, height=height)
 
         footer_height = int(height * 0.04)
         chart_top = y + header_height
@@ -149,88 +121,24 @@ class CandlestickDisplay(Component):
         chart_height = chart_bottom - chart_top
         chart_width = chart_right - chart_left
 
+        # Value color reflects the most recent candle direction.
         value_color: Color = THEME_TEXT_SECONDARY
         if self.data:
             last = self.data[-1]
             value_color = ctx.theme.success if last[3] >= last[0] else ctx.theme.error
 
-        if mode == "stacked":
-            Column(
-                children=[
-                    Text(
-                        text=self.label.upper(),
-                        font="small",
-                        color=THEME_TEXT_SECONDARY,
-                        align="center",
-                        truncate=True,
-                    ),
-                    Text(
-                        text=value_str,
-                        font="regular",
-                        color=value_color,
-                        align="center",
-                        auto_fit=True,
-                    ),
-                ],
-                gap=2,
-                padding=2,
-                align="stretch",
-                justify="center",
-            ).render(ctx, x, y, width, header_height)
-        elif mode == "inline":
-            Row(
-                children=[
-                    Text(
-                        text=self.label.upper(),
-                        font="small",
-                        color=THEME_TEXT_SECONDARY,
-                        align="start",
-                        truncate=True,
-                    ),
-                    Spacer(),
-                    Text(
-                        text=value_str,
-                        font="regular",
-                        color=value_color,
-                        align="end",
-                        auto_fit=True,
-                    ),
-                ],
-                gap=4,
-                padding=padding,
-                align="center",
-                justify="start",
-            ).render(ctx, x, y, width, header_height)
-        elif mode == "value_only":
-            Row(
-                children=[
-                    Text(
-                        text=value_str,
-                        font="regular",
-                        color=value_color,
-                        align="center",
-                        auto_fit=True,
-                    )
-                ],
-                padding=padding,
-                align="center",
-                justify="center",
-            ).render(ctx, x, y, width, header_height)
-        elif mode == "label_only":
-            Row(
-                children=[
-                    Text(
-                        text=self.label.upper(),
-                        font="small",
-                        color=THEME_TEXT_SECONDARY,
-                        align="center",
-                        truncate=True,
-                    )
-                ],
-                padding=padding,
-                align="center",
-                justify="center",
-            ).render(ctx, x, y, width, header_height)
+        render_label_value_header(
+            ctx,
+            x,
+            y,
+            width,
+            header_height,
+            mode=mode,
+            label=self.label,
+            value=value_str,
+            value_color=value_color,
+            padding=padding,
+        )
 
         # Draw candles
         if not self.data:
