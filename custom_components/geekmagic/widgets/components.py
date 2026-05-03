@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from ._flex import (
     AUTO,
@@ -135,9 +135,42 @@ class Text(Component):
     color: Color = THEME_TEXT_PRIMARY  # Theme-aware by default
     align: Align = "center"
     truncate: bool = False  # Auto-truncate with ellipsis if text exceeds width
+    auto_fit: bool = False  # Shrink font progressively until text fits, then truncate
+
+    _FONT_SHRINK_CHAIN: ClassVar[tuple[str, ...]] = (
+        "primary",
+        "huge",
+        "xlarge",
+        "large",
+        "medium",
+        "regular",
+        "secondary",
+        "small",
+        "tertiary",
+        "tiny",
+    )
+
+    def _resolved_font_chain(self) -> list[str]:
+        """Return the cascade of fonts to try when auto_fit is enabled."""
+        if self.font in self._FONT_SHRINK_CHAIN:
+            idx = self._FONT_SHRINK_CHAIN.index(self.font)
+            return list(self._FONT_SHRINK_CHAIN[idx:])
+        return [self.font, "small", "tiny"]
+
+    def _pick_font(self, ctx: RenderContext, max_width: int):
+        """Return the largest font in the shrink chain that fits the text."""
+        for name in self._resolved_font_chain():
+            f = ctx.get_font(name, bold=self.bold)
+            w, _ = ctx.get_text_size(self.text, f)
+            if w <= max_width:
+                return f
+        return ctx.get_font(self._resolved_font_chain()[-1], bold=self.bold)
 
     def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
-        font = ctx.get_font(self.font, bold=self.bold)
+        if self.auto_fit:
+            font = self._pick_font(ctx, max_width)
+        else:
+            font = ctx.get_font(self.font, bold=self.bold)
         return ctx.get_text_size(self.text, font)
 
     def _truncate_text(self, ctx: RenderContext, text: str, font, max_width: int) -> str:
@@ -157,13 +190,16 @@ class Text(Component):
         return ellipsis
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        font = ctx.get_font(self.font, bold=self.bold)
+        if self.auto_fit:
+            font = self._pick_font(ctx, width)
+        else:
+            font = ctx.get_font(self.font, bold=self.bold)
         anchor_map = {"start": "lm", "center": "mm", "end": "rm", "stretch": "mm"}
         anchor = anchor_map.get(self.align, "mm")
 
         # Apply truncation if enabled
         display_text = self.text
-        if self.truncate:
+        if self.truncate or self.auto_fit:
             display_text = self._truncate_text(ctx, self.text, font, width)
 
         if self.align == "start":
@@ -379,6 +415,25 @@ class Empty(Component):
         pass
 
 
+@dataclass
+class Flex(Component):
+    """Wrap a child so a Row/Column gives it the remaining main-axis space.
+
+    Spacer-like flex_grow distribution for non-spacer content (bars, text,
+    sub-layouts). The child's intrinsic measurement is ignored on the main
+    axis — the Flex receives whatever's left after fixed-size siblings.
+    """
+
+    child: Component
+    grow: int = 1
+
+    def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
+        return self.child.measure(ctx, max_width, max_height)
+
+    def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
+        self.child.render(ctx, x, y, width, height)
+
+
 # ============================================================================
 # Layout Components
 # ============================================================================
@@ -434,6 +489,10 @@ class Row(Component):
             cw, ch = child.measure(ctx, inner_w, inner_h)
             if isinstance(child, Spacer):
                 root.add(Node(key=f"c{i}", flex_grow=1, size=(AUTO, 100 * PCT)))
+            elif isinstance(child, Flex):
+                # Flex children get the remaining main-axis space.
+                cross = 100 * PCT if self.align == "stretch" else ch
+                root.add(Node(key=f"c{i}", flex_grow=child.grow, size=(AUTO, cross)))
             elif self.align == "stretch":
                 # Stretch to full container height
                 root.add(Node(key=f"c{i}", size=(cw, 100 * PCT)))
@@ -506,6 +565,10 @@ class Column(Component):
             cw, ch = child.measure(ctx, inner_w, inner_h)
             if isinstance(child, Spacer):
                 root.add(Node(key=f"c{i}", flex_grow=1, size=(100 * PCT, AUTO)))
+            elif isinstance(child, Flex):
+                # Flex children get the remaining main-axis space.
+                cross = 100 * PCT if self.align == "stretch" else cw
+                root.add(Node(key=f"c{i}", flex_grow=child.grow, size=(cross, AUTO)))
             elif self.align == "stretch":
                 # Stretch to full container width
                 root.add(Node(key=f"c{i}", size=(100 * PCT, ch)))
@@ -564,11 +627,28 @@ class Adaptive(Component):
     padding: int = 0
 
     def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
-        # Measure as row first
-        row = Row(
-            children=self.children, gap=self.gap, padding=self.padding, justify="space-between"
-        )
-        return row.measure(ctx, max_width, max_height)
+        children = [c for c in self.children if c is not None]
+        if not children:
+            return (0, 0)
+        inner_w = max_width - self.padding * 2
+        # Decide row vs column the same way render() does, so the outer
+        # container budgets the correct height.
+        total_width = sum(c.measure(ctx, inner_w, max_height)[0] for c in children)
+        total_width += self.gap * (len(children) - 1)
+        if total_width <= inner_w:
+            return Row(
+                children=children,
+                gap=self.gap,
+                padding=self.padding,
+                justify="space-between",
+            ).measure(ctx, max_width, max_height)
+        return Column(
+            children=children,
+            gap=self.gap,
+            padding=self.padding,
+            justify="center",
+            align="center",
+        ).measure(ctx, max_width, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
         # Filter out None children

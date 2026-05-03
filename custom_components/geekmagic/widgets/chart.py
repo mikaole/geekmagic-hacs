@@ -47,24 +47,45 @@ class ChartDisplay(Component):
         chart_bottom = y + height - footer_height
         chart_rect = (x + padding, chart_top, x + width - padding, chart_bottom)
 
-        # Build header using declarative components
+        # Decide which header pieces fit. The value is more informative than
+        # the label at narrow sizes, so drop the label first when the two
+        # together would overflow the inner header width.
+        inner_w = width - padding * 2
+        value_str = (
+            f"{self.current_value:.1f}{self.unit}" if self.current_value is not None else ""
+        )
+
+        show_label = bool(self.label)
+        show_value = bool(value_str)
+        if show_label and show_value:
+            font_value = ctx.get_font("regular")
+            label_w, _ = ctx.get_text_size(self.label.upper(), font_label)
+            value_w, _ = ctx.get_text_size(value_str, font_value)
+            if label_w + value_w + 4 > inner_w:
+                show_label = False  # Value wins; label drops to make room.
+
         header_children: list[Component] = []
-        if self.label:
+        if show_label:
             header_children.append(
                 Text(
                     text=self.label.upper(),
                     font="small",
                     color=THEME_TEXT_SECONDARY,
                     align="start",
-                    truncate=True,  # Auto-truncate if needed
+                    truncate=True,
                 )
             )
-        if self.current_value is not None:
-            value_str = f"{self.current_value:.1f}{self.unit}"
-            if self.label:
+        if show_value:
+            if show_label:
                 header_children.append(Spacer())
             header_children.append(
-                Text(text=value_str, font="regular", color=self.color, align="end")
+                Text(
+                    text=value_str,
+                    font="regular",
+                    color=self.color,
+                    align="end" if show_label else "center",
+                    auto_fit=True,
+                )
             )
 
         if header_children:
@@ -73,6 +94,7 @@ class ChartDisplay(Component):
                 gap=4,
                 padding=padding,
                 align="center",
+                justify="center" if not show_label else "start",
             ).render(ctx, x, y, width, header_height)
 
         # Draw chart

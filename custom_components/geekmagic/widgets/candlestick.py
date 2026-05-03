@@ -111,9 +111,24 @@ class CandlestickDisplay(Component):
         chart_height = chart_bottom - chart_top
         chart_width = chart_right - chart_left
 
-        # Build header using declarative components
+        # Decide header pieces — value wins over label when space is tight.
+        inner_w = width - padding * 2
+        value_str = (
+            f"{self.current_value:.1f}{self.unit}"
+            if self.show_value and self.current_value is not None
+            else ""
+        )
+        show_label = bool(self.label)
+        show_value = bool(value_str)
+        if show_label and show_value:
+            font_value = ctx.get_font("regular")
+            label_w, _ = ctx.get_text_size(self.label.upper(), font_label)
+            value_w, _ = ctx.get_text_size(value_str, font_value)
+            if label_w + value_w + 4 > inner_w:
+                show_label = False
+
         header_children: list[Component] = []
-        if self.label:
+        if show_label:
             header_children.append(
                 Text(
                     text=self.label.upper(),
@@ -123,17 +138,21 @@ class CandlestickDisplay(Component):
                     truncate=True,
                 )
             )
-        if self.show_value and self.current_value is not None:
-            value_str = f"{self.current_value:.1f}{self.unit}"
-            if self.label:
+        if show_value:
+            if show_label:
                 header_children.append(Spacer())
-            # Color the value based on last candle direction
             value_color: Color = THEME_TEXT_SECONDARY
             if self.data:
                 last = self.data[-1]
                 value_color = ctx.theme.success if last[3] >= last[0] else ctx.theme.error
             header_children.append(
-                Text(text=value_str, font="regular", color=value_color, align="end")
+                Text(
+                    text=value_str,
+                    font="regular",
+                    color=value_color,
+                    align="end" if show_label else "center",
+                    auto_fit=True,
+                )
             )
 
         if header_children:
@@ -142,6 +161,7 @@ class CandlestickDisplay(Component):
                 gap=4,
                 padding=padding,
                 align="center",
+                justify="center" if not show_label else "start",
             ).render(ctx, x, y, width, header_height)
 
         # Draw candles
