@@ -11,9 +11,11 @@ from .base import Widget, WidgetConfig
 from .components import (
     THEME_TEXT_PRIMARY,
     THEME_TEXT_SECONDARY,
+    Chip,
     Color,
     Column,
     Component,
+    Flex,
     Icon,
     Row,
     Spacer,
@@ -94,7 +96,15 @@ class StatusIndicator(Component):
         ]
 
         if self.show_status_text:
-            children.append(Text(text=status_text, font="medium", color=color, bold=True))
+            children.append(
+                Chip(
+                    text=status_text.upper(),
+                    color=color,
+                    font="small",
+                    bold=True,
+                    tracking=1,
+                )
+            )
 
         Column(
             children=children,
@@ -125,31 +135,40 @@ class StatusIndicator(Component):
         font_bold = ctx.get_font("small", bold=True)
         icon_w = (icon_size + 6) if self.icon else 0
         inner_w = width - padding * 2 - icon_w
-        status_w, _ = ctx.get_text_size(status_text, font_bold)
-        # 24px ≈ "name…" minimum readable width for the name on the left.
-        show_status = self.show_status_text and status_w + 24 <= inner_w
+        status_text_upper = status_text.upper()
+        status_w, _ = ctx.get_text_size(status_text_upper, font_bold)
+        # Account for chip padding + tracking when budgeting.
+        chip_overhead = 5 * 2 + max(0, len(status_text_upper) - 1) * 1
+        # 28px ≈ "name…" minimum readable width for the name on the left.
+        show_status = self.show_status_text and status_w + chip_overhead + 28 <= inner_w
 
         children: list[Component] = []
         if self.icon:
             children.append(Icon(name=self.icon, size=icon_size, color=color))
+        # Wrap the name in Flex so it absorbs slack space.
         children.append(
-            Text(
-                text=self.name,
-                font="small",
-                color=THEME_TEXT_PRIMARY,
-                align="start",
-                truncate=True,
+            Flex(
+                child=Text(
+                    text=self.name,
+                    font="small",
+                    color=THEME_TEXT_PRIMARY,
+                    align="start",
+                    truncate=True,
+                ),
             )
         )
         if show_status:
-            children.append(Spacer())
+            # Horizontal cells are usually tight — bold colored text gives
+            # the name more room than a chip would. Vertical layout still
+            # uses the chip (see ``_render_vertical``).
             children.append(
                 Text(
-                    text=status_text,
+                    text=status_text.upper(),
                     font="small",
                     color=color,
                     align="end",
                     bold=True,
+                    tracking=1,
                 )
             )
 
@@ -257,6 +276,7 @@ class StatusListDisplay(Component):
                     font="small",
                     color=THEME_TEXT_SECONDARY,
                     align="start",
+                    tracking=1,
                 )
             )
 

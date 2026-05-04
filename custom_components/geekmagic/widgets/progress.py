@@ -124,6 +124,7 @@ class ProgressDisplay(Component):
                     color=THEME_TEXT_SECONDARY,
                     align="center",
                     truncate=True,
+                    tracking=1,
                 )
             )
 
@@ -240,6 +241,7 @@ class ProgressDisplay(Component):
                             color=THEME_TEXT_SECONDARY,
                             align="start",
                             truncate=True,
+                            tracking=1,
                         ),
                         Spacer(),
                         Text(
@@ -380,6 +382,7 @@ class MultiProgressDisplay(Component):
                             font="small",
                             color=THEME_TEXT_SECONDARY,
                             align="start",
+                            tracking=1,
                         )
                     ],
                     padding=padding,
@@ -407,7 +410,11 @@ class MultiProgressDisplay(Component):
             top_row_children.extend(
                 [
                     Text(
-                        text=label.upper(), font="tiny", color=THEME_TEXT_SECONDARY, align="start"
+                        text=label.upper(),
+                        font="tiny",
+                        color=THEME_TEXT_SECONDARY,
+                        align="start",
+                        tracking=1,
                     ),
                     Spacer(),
                     Text(text=value_text, font="tiny", color=THEME_TEXT_PRIMARY, align="end"),

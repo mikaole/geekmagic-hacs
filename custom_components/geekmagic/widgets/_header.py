@@ -109,6 +109,7 @@ def render_label_value_header(
                     color=THEME_TEXT_SECONDARY,
                     align="center",
                     truncate=True,
+                    tracking=1,
                 ),
                 Text(
                     text=value,
@@ -132,6 +133,7 @@ def render_label_value_header(
                     color=THEME_TEXT_SECONDARY,
                     align="start",
                     truncate=True,
+                    tracking=1,
                 ),
                 Spacer(),
                 Text(

@@ -136,6 +136,9 @@ class Text(Component):
     align: Align = "center"
     truncate: bool = False  # Auto-truncate with ellipsis if text exceeds width
     auto_fit: bool = False  # Shrink font progressively until text fits, then truncate
+    # Letter-spacing in unscaled pixels. Used for uppercase labels to make
+    # them feel "designed" rather than squished. Drawn one glyph at a time.
+    tracking: int = 0
 
     _FONT_SHRINK_CHAIN: ClassVar[tuple[str, ...]] = (
         "primary",
@@ -171,7 +174,10 @@ class Text(Component):
             font = self._pick_font(ctx, max_width)
         else:
             font = ctx.get_font(self.font, bold=self.bold)
-        return ctx.get_text_size(self.text, font)
+        w, h = ctx.get_text_size(self.text, font)
+        if self.tracking and len(self.text) > 1:
+            w += self.tracking * (len(self.text) - 1)
+        return (w, h)
 
     def _truncate_text(self, ctx: RenderContext, text: str, font, max_width: int) -> str:
         """Truncate text with ellipsis to fit within max_width."""
@@ -200,7 +206,11 @@ class Text(Component):
         # Apply truncation if enabled
         display_text = self.text
         if self.truncate or self.auto_fit:
-            display_text = self._truncate_text(ctx, self.text, font, width)
+            # When tracking is set, account for tracked width in truncation.
+            avail = width
+            if self.tracking and len(display_text) > 1:
+                avail = max(0, width - self.tracking * (len(display_text) - 1))
+            display_text = self._truncate_text(ctx, self.text, font, avail)
 
         if self.align == "start":
             text_x = x
@@ -211,7 +221,34 @@ class Text(Component):
 
         # Resolve theme-aware colors at render time
         resolved_color = _resolve_color(self.color, ctx)
-        ctx.draw_text(display_text, (text_x, y + height // 2), font, resolved_color, anchor)
+
+        if self.tracking and len(display_text) > 1:
+            self._draw_tracked(ctx, display_text, text_x, y + height // 2, font, resolved_color)
+        else:
+            ctx.draw_text(display_text, (text_x, y + height // 2), font, resolved_color, anchor)
+
+    def _draw_tracked(
+        self, ctx: RenderContext, text: str, anchor_x: int, mid_y: int, font, color: Color
+    ) -> None:
+        """Draw ``text`` glyph by glyph with ``self.tracking`` extra px between chars.
+
+        ``anchor_x`` is interpreted per ``self.align``: left edge for start,
+        center for center, right edge for end.
+        """
+        # Measure each glyph so we can pack them with extra spacing.
+        widths = [ctx.get_text_size(ch, font)[0] for ch in text]
+        total_w = sum(widths) + self.tracking * (len(text) - 1)
+
+        if self.align == "start":
+            cursor = anchor_x
+        elif self.align == "end":
+            cursor = anchor_x - total_w
+        else:
+            cursor = anchor_x - total_w // 2
+
+        for ch, w in zip(text, widths, strict=True):
+            ctx.draw_text(ch, (cursor, mid_y), font, color, "lm")
+            cursor += w + self.tracking
 
 
 @dataclass
@@ -389,6 +426,72 @@ class Panel(Component):
 
         if self.child:
             self.child.render(ctx, x, y, width, height)
+
+
+@dataclass
+class Chip(Component):
+    """Pill-shaped state badge with tinted background and colored text.
+
+    Use this for short on/off/state words so they read as a state ("LIVE",
+    "ARMED", "OFF") rather than floating bold text. The background is the
+    chip color blended toward the surface so it looks tinted, not loud.
+    """
+
+    text: str
+    color: Color = (0, 200, 120)
+    font: str = "small"
+    bold: bool = True
+    padding_x: int = 5
+    padding_y: int = 1
+    tracking: int = 0
+
+    def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
+        font = ctx.get_font(self.font, bold=self.bold)
+        tw, th = ctx.get_text_size(self.text, font)
+        if self.tracking and len(self.text) > 1:
+            tw += self.tracking * (len(self.text) - 1)
+        return (tw + self.padding_x * 2, th + self.padding_y * 2)
+
+    def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
+        font = ctx.get_font(self.font, bold=self.bold)
+        tw, th = ctx.get_text_size(self.text, font)
+        if self.tracking and len(self.text) > 1:
+            tw += self.tracking * (len(self.text) - 1)
+
+        chip_w = min(width, tw + self.padding_x * 2)
+        chip_h = min(height, th + self.padding_y * 2)
+        # Right-align inside container so chips slot neatly into rows.
+        cx2 = x + width
+        cx1 = cx2 - chip_w
+        cy1 = y + (height - chip_h) // 2
+        cy2 = cy1 + chip_h
+
+        # Tinted background: blend chip color toward surface so it sits
+        # quietly on the card. Avoids the loud "filled button" look.
+        surface = ctx.theme.surface
+        tint = (
+            int(surface[0] + (self.color[0] - surface[0]) * 0.22),
+            int(surface[1] + (self.color[1] - surface[1]) * 0.22),
+            int(surface[2] + (self.color[2] - surface[2]) * 0.22),
+        )
+        radius = chip_h // 2  # full pill
+        ctx.draw_rounded_rect((cx1, cy1, cx2, cy2), radius=radius, fill=tint)
+
+        # Center text inside chip
+        text_x = (cx1 + cx2) // 2
+        text_y = (cy1 + cy2) // 2
+        if self.tracking and len(self.text) > 1:
+            # Reuse Text's tracked draw for consistency
+            Text(
+                text=self.text,
+                font=self.font,
+                bold=self.bold,
+                color=self.color,
+                align="center",
+                tracking=self.tracking,
+            ).render(ctx, cx1, cy1, chip_w, chip_h)
+        else:
+            ctx.draw_text(self.text, (text_x, text_y), font, self.color, "mm")
 
 
 @dataclass

@@ -181,7 +181,12 @@ class WeatherDisplay(Component):
                     forecast_columns.append(
                         Column(
                             children=[
-                                Text(day_name.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+                                Text(
+                                    day_name.upper(),
+                                    font="tiny",
+                                    color=THEME_TEXT_SECONDARY,
+                                    tracking=1,
+                                ),
                                 Icon(day_icon, size=forecast_icon_size, color=THEME_TEXT_SECONDARY),
                                 Text(temp_str, font="tiny", color=THEME_TEXT_PRIMARY),
                             ],

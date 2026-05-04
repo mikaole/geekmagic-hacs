@@ -62,7 +62,7 @@ def BarGauge(
         header_children.append(Icon(icon, size=16, color=color))
     header_children.extend(
         [
-            Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+            Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY, tracking=1),
             Spacer(),
             Text(value, font="medium", bold=True, color=THEME_TEXT_PRIMARY),
         ]
@@ -107,7 +107,7 @@ def RingGauge(
                 gap=4,
                 children=[
                     Text(value, font="large", color=THEME_TEXT_PRIMARY),
-                    Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+                    Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY, tracking=1),
                 ],
             ),
         ],
@@ -140,7 +140,7 @@ def ArcGauge(
                 align="center",
                 padding=4,
                 children=[
-                    Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+                    Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY, tracking=1),
                 ],
             ),
             # Add top padding to arc so it doesn't overlap with label
@@ -222,7 +222,7 @@ def CenteredValue(
         Text(value, font=value_font, color=value_color),
     ]
     if label:
-        children.append(Text(label.upper(), font=label_font, color=label_color))
+        children.append(Text(label.upper(), font=label_font, color=label_color, tracking=1))
 
     return Column(
         align="center",
@@ -328,7 +328,7 @@ def ProgressRow(
         header_children.append(Icon(icon, size=14, color=color))
     header_children.extend(
         [
-            Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+            Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY, tracking=1),
             Spacer(),
             Text(value, font="small", color=THEME_TEXT_PRIMARY),
         ]
