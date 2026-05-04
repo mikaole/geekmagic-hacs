@@ -6,10 +6,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from ..const import (
-    COLOR_CYAN,
-    COLOR_GOLD,
-)
 from ..render_context import SizeCategory, get_size_category
 from .base import Widget, WidgetConfig
 from .components import (
@@ -22,6 +18,17 @@ from .components import (
     Row,
     Stack,
     Text,
+)
+from .theme import (
+    SYSTEM_BLUE,
+    SYSTEM_CYAN,
+    SYSTEM_INDIGO,
+    SYSTEM_MINT,
+    SYSTEM_ORANGE,
+    SYSTEM_PURPLE,
+    SYSTEM_RED,
+    SYSTEM_TEAL,
+    SYSTEM_YELLOW,
 )
 
 if TYPE_CHECKING:
@@ -46,6 +53,42 @@ WEATHER_ICONS = {
     "lightning-rainy": "weather-lightning-rainy",
     "exceptional": "alert-circle",
 }
+
+# Condition → tint color mapping (semantic, watchOS-style)
+WEATHER_TINTS: dict[str, tuple[int, int, int]] = {
+    "sunny": SYSTEM_YELLOW,
+    "clear-night": SYSTEM_INDIGO,
+    "partlycloudy": SYSTEM_TEAL,
+    "cloudy": SYSTEM_TEAL,
+    "rainy": SYSTEM_BLUE,
+    "pouring": SYSTEM_BLUE,
+    "snowy": SYSTEM_CYAN,
+    "snowy-rainy": SYSTEM_CYAN,
+    "fog": SYSTEM_TEAL,
+    "hail": SYSTEM_CYAN,
+    "windy": SYSTEM_MINT,
+    "windy-variant": SYSTEM_MINT,
+    "lightning": SYSTEM_PURPLE,
+    "lightning-rainy": SYSTEM_PURPLE,
+    "exceptional": SYSTEM_RED,
+}
+
+
+def _temp_tint(temp: Any) -> tuple[int, int, int] | None:
+    """Tint a temperature value by hot/cold (in °C)."""
+    try:
+        t = float(temp)
+    except (ValueError, TypeError):
+        return None
+    if t >= 30:
+        return SYSTEM_RED
+    if t >= 22:
+        return SYSTEM_ORANGE
+    if t >= 12:
+        return None  # Use default text_primary
+    if t >= 0:
+        return SYSTEM_TEAL
+    return SYSTEM_CYAN
 
 # Weekday abbreviations
 WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -97,18 +140,17 @@ class WeatherDisplay(Component):
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
         """Render weather."""
         icon_name = WEATHER_ICONS.get(self.condition, "weather-sunny")
+        # Tint icon and temperature semantically by condition / temperature.
+        self._icon_tint = WEATHER_TINTS.get(self.condition, SYSTEM_YELLOW)
+        self._temp_tint = _temp_tint(self.temperature) or ctx.theme.text_primary
 
-        # Use standard size categories for responsive layout
         size = get_size_category(height)
 
         if size in (SizeCategory.MEDIUM, SizeCategory.LARGE) and self.show_forecast:
-            # Full layout with detailed forecast
             component = self._build_full(ctx, width, height, icon_name)
         elif size == SizeCategory.SMALL and self.show_forecast and self.forecast:
-            # Semi-compact: current weather + mini forecast icons
             component = self._build_semi_compact(ctx, width, height, icon_name)
         else:
-            # Compact: just current weather
             component = self._build_compact(ctx, width, height, icon_name)
 
         component.render(ctx, x, y, width, height)
@@ -129,8 +171,8 @@ class WeatherDisplay(Component):
 
         main_weather = Column(
             children=[
-                Icon(icon_name, size=icon_size, color=COLOR_GOLD),
-                Text(temp_str, font="xlarge", color=THEME_TEXT_PRIMARY),
+                Icon(icon_name, size=icon_size, color=self._icon_tint),
+                Text(temp_str, font="xlarge", bold=True, color=self._temp_tint),
                 Text(
                     self.condition.replace("-", " ").title(),
                     font="small",
@@ -149,8 +191,8 @@ class WeatherDisplay(Component):
             humidity_icon_size = max(8, int(height * 0.07))
             humidity_row = Row(
                 children=[
-                    Icon("water-percent", size=humidity_icon_size, color=COLOR_CYAN),
-                    Text(f"{self.humidity}%", font="tiny", color=COLOR_CYAN, align="start"),
+                    Icon("water-percent", size=humidity_icon_size, color=SYSTEM_CYAN),
+                    Text(f"{self.humidity}%", font="tiny", color=SYSTEM_CYAN, align="start"),
                 ],
                 gap=4,
                 align="center",
@@ -178,12 +220,13 @@ class WeatherDisplay(Component):
                     else:
                         temp_str = f"{day_temp}°"
 
+                    day_tint = WEATHER_TINTS.get(day_condition, SYSTEM_YELLOW)
                     forecast_columns.append(
                         Column(
                             children=[
                                 Text(day_name.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
-                                Icon(day_icon, size=forecast_icon_size, color=THEME_TEXT_SECONDARY),
-                                Text(temp_str, font="tiny", color=THEME_TEXT_PRIMARY),
+                                Icon(day_icon, size=forecast_icon_size, color=day_tint),
+                                Text(temp_str, font="tiny", bold=True, color=THEME_TEXT_PRIMARY),
                             ],
                             gap=int(height * 0.02),
                             align="center",
@@ -249,11 +292,11 @@ class WeatherDisplay(Component):
         mini_icon_size = max(10, int(height * 0.12))
         temp_str = f"{self.temperature}°" if self.temperature != "--" else "--"
 
-        # Top row: current weather (icon + temp)
+        # Top row: current weather (icon + temp), tinted by condition
         top_row = Row(
             children=[
-                Icon(icon_name, size=icon_size, color=COLOR_GOLD),
-                Text(temp_str, font="large", color=THEME_TEXT_PRIMARY),
+                Icon(icon_name, size=icon_size, color=self._icon_tint),
+                Text(temp_str, font="large", bold=True, color=self._temp_tint),
             ],
             gap=4,
             align="center",
@@ -265,7 +308,8 @@ class WeatherDisplay(Component):
         for day in self.forecast[: min(3, self.forecast_days)]:
             day_condition = day.get("condition", "sunny")
             day_icon = WEATHER_ICONS.get(day_condition, "weather-sunny")
-            forecast_icons.append(Icon(day_icon, size=mini_icon_size, color=THEME_TEXT_SECONDARY))
+            day_tint = WEATHER_TINTS.get(day_condition, SYSTEM_YELLOW)
+            forecast_icons.append(Icon(day_icon, size=mini_icon_size, color=day_tint))
 
         bottom_row = (
             Row(
@@ -303,15 +347,17 @@ class WeatherDisplay(Component):
         icon_size = max(16, min(32, int(height * 0.40)))
         temp_str = f"{self.temperature}°" if self.temperature != "--" else "--"
 
-        # Left side: icon
-        left_side = Icon(icon_name, size=icon_size, color=COLOR_GOLD)
+        # Left side: icon (tinted by condition)
+        left_side = Icon(icon_name, size=icon_size, color=self._icon_tint)
 
         # Right side: temperature and optionally humidity
-        right_children = [Text(temp_str, font="large", color=THEME_TEXT_PRIMARY, align="end")]
+        right_children = [
+            Text(temp_str, font="large", bold=True, color=self._temp_tint, align="end")
+        ]
 
         if self.show_humidity:
             right_children.append(
-                Text(f"{self.humidity}%", font="tiny", color=COLOR_CYAN, align="end")
+                Text(f"{self.humidity}%", font="tiny", color=SYSTEM_CYAN, align="end")
             )
 
         right_side = Column(

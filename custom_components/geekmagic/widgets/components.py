@@ -1094,19 +1094,14 @@ class IconValueDisplay(Component):
         )
         current_y += value_height + 6
 
-        # Draw label at bottom
-        label_font = ctx.fit_text(
-            self.label.upper(),
-            max_width=int(inner_width * 0.90),
-            max_height=int(label_height * 0.90),
-            bold=False,
-        )
-        ctx.draw_text(
-            self.label.upper(),
+        # Draw caps-tracked label at bottom (watchOS hierarchy: tertiary tier)
+        ctx.draw_label(
+            self.label,
             (center_x, current_y + label_height // 2),
-            font=label_font,
             color=label_color,
             anchor="mm",
+            size="tertiary",
+            adjust=+1,
         )
 
 
