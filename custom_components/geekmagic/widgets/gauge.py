@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from ..const import COLOR_DARK_GRAY
 from .base import Widget, WidgetConfig
 from .component_helpers import ArcGauge, BarGauge, RingGauge
 from .components import Component
@@ -124,27 +123,15 @@ class GaugeWidget(Widget):
         # Format value with unit
         value_text = format_value_with_unit(display_value, unit) if self.show_value else ""
 
+        # Track color stays None so the theme's tinted track applies
         if self.style == "ring":
-            return RingGauge(
-                percent=percent,
-                value=value_text,
-                label=name,
-                color=color,
-                background=COLOR_DARK_GRAY,
-            )
+            return RingGauge(percent=percent, value=value_text, label=name, color=color)
         if self.style == "arc":
-            return ArcGauge(
-                percent=percent,
-                value=value_text,
-                label=name,
-                color=color,
-                background=COLOR_DARK_GRAY,
-            )
+            return ArcGauge(percent=percent, value=value_text, label=name, color=color)
         return BarGauge(
             percent=percent,
             value=value_text,
             label=name,
             color=color,
             icon=self.icon,
-            background=COLOR_DARK_GRAY,
         )

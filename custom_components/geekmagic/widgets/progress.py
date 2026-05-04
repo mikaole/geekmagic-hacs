@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from ..const import COLOR_CYAN, COLOR_DARK_GRAY
+from ..const import COLOR_CYAN
 from ..render_context import SizeCategory, get_size_category
 from .base import Widget, WidgetConfig
 from .components import (
@@ -134,6 +134,7 @@ class ProgressDisplay(Component):
                     Text(
                         text=value_text,
                         font="large",
+                        bold=True,
                         color=THEME_TEXT_PRIMARY,
                         align="center",
                         auto_fit=True,
@@ -150,7 +151,6 @@ class ProgressDisplay(Component):
                         Bar(
                             percent=percent,
                             color=self.color,
-                            background=COLOR_DARK_GRAY,
                             height=bar_height,
                         )
                     ),
@@ -198,7 +198,6 @@ class ProgressDisplay(Component):
                     Bar(
                         percent=percent,
                         color=self.color,
-                        background=COLOR_DARK_GRAY,
                         height=bar_height,
                     )
                 ),
@@ -269,7 +268,6 @@ class ProgressDisplay(Component):
                     Bar(
                         percent=percent,
                         color=self.color,
-                        background=COLOR_DARK_GRAY,
                         height=bar_height,
                     )
                 ),
@@ -417,7 +415,7 @@ class MultiProgressDisplay(Component):
             # Bottom row: Bar + Percent
             bottom_row_children = [
                 Flex(
-                    Bar(percent=percent, color=color, background=COLOR_DARK_GRAY, height=bar_height)
+                    Bar(percent=percent, color=color, height=bar_height)
                 ),
                 Text(text=f"{percent:.0f}%", font="tiny", color=THEME_TEXT_PRIMARY, align="end"),
             ]

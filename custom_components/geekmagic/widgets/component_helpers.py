@@ -37,39 +37,27 @@ def BarGauge(
     label: str,
     color: Color,
     icon: str | None = None,
-    background: Color | None = None,  # None = use theme.bar_background
-    padding: int = 8,
+    background: Color | None = None,  # None = theme tinted track
+    padding: int = 6,
 ) -> Component:
-    """Bar gauge with header row (icon/label/value) and progress bar below.
+    """Bar gauge: caps-tracked label/icon row + thin tinted progress bar.
 
-    Automatically adapts header to horizontal/vertical based on space.
-
-    Args:
-        percent: Progress percentage (0-100)
-        value: Display value (e.g., "75%")
-        label: Label text
-        color: Bar and icon color
-        icon: Optional icon name
-        background: Bar background color
-        padding: Outer padding
-
-    Returns:
-        Component tree for bar gauge
+    The header row puts the label on the left and the value on the right
+    (semibold, primary text color); the bar fills the row beneath.
     """
     header_children: list[Component | None] = []
     if icon:
-        # Fixed 16px icon size for header to prevent oversized icons
-        header_children.append(Icon(icon, size=16, color=color))
+        header_children.append(Icon(icon, size=14, color=color))
     header_children.extend(
         [
-            Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+            Text(label.upper(), font="tertiary", color=THEME_TEXT_SECONDARY),
             Spacer(),
-            Text(value, font="medium", bold=True, color=THEME_TEXT_PRIMARY),
+            Text(value, font="secondary", bold=True, color=THEME_TEXT_PRIMARY),
         ]
     )
 
     return Column(
-        gap=6,
+        gap=5,
         padding=padding,
         justify="center",
         children=[
@@ -84,19 +72,12 @@ def RingGauge(
     value: str,
     label: str,
     color: Color,
-    background: Color | None = None,  # None = use theme.bar_background
+    background: Color | None = None,  # None = theme tinted track
 ) -> Component:
-    """Ring gauge with centered value and label overlay.
+    """Ring gauge with centered bold value and caps-tracked label.
 
-    Args:
-        percent: Progress percentage (0-100)
-        value: Display value (e.g., "75%")
-        label: Label text
-        color: Ring color
-        background: Ring background color
-
-    Returns:
-        Component tree for ring gauge
+    watchOS Activity-ring style: tinted track, thick ring, bold value
+    in the ring's color.
     """
     return Stack(
         children=[
@@ -104,10 +85,10 @@ def RingGauge(
             Column(
                 align="center",
                 justify="center",
-                gap=4,
+                gap=2,
                 children=[
-                    Text(value, font="large", color=THEME_TEXT_PRIMARY),
-                    Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+                    Text(value, font="primary", bold=True, color=color),
+                    Text(label.upper(), font="tertiary", color=THEME_TEXT_SECONDARY),
                 ],
             ),
         ],
@@ -119,20 +100,9 @@ def ArcGauge(
     value: str,
     label: str,
     color: Color,
-    background: Color | None = None,  # None = use theme.bar_background
+    background: Color | None = None,  # None = theme tinted track
 ) -> Component:
-    """Arc gauge (270 degrees) with centered value and label at top.
-
-    Args:
-        percent: Progress percentage (0-100)
-        value: Display value
-        label: Label text
-        color: Arc color
-        background: Arc background color
-
-    Returns:
-        Component tree for arc gauge
-    """
+    """Arc gauge (270 degrees): caps label on top, bold tinted value below."""
     return Stack(
         children=[
             Column(
@@ -140,14 +110,13 @@ def ArcGauge(
                 align="center",
                 padding=4,
                 children=[
-                    Text(label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+                    Text(label.upper(), font="tertiary", color=THEME_TEXT_SECONDARY),
                 ],
             ),
-            # Add top padding to arc so it doesn't overlap with label
             Column(
                 justify="center",
                 align="center",
-                padding=12,
+                padding=10,
                 children=[
                     Arc(percent=percent, color=color, background=background),
                 ],
@@ -156,7 +125,7 @@ def ArcGauge(
                 align="center",
                 justify="center",
                 children=[
-                    Text(value, font="medium", color=THEME_TEXT_PRIMARY),
+                    Text(value, font="secondary", bold=True, color=color),
                 ],
             ),
         ],

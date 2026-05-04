@@ -40,35 +40,32 @@ class ClockDisplay(Component):
         return (max_width, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        """Render clock with time, date, and optional AM/PM indicator."""
+        """Render clock with time, date, and optional AM/PM indicator.
+
+        watchOS pattern: hero time fills the cell, caps-tracked date below
+        in tertiary text, AM/PM as a small tinted accent next to the time.
+        """
         # Resolve theme-aware colors
         time_color = _resolve_color(self.time_color, ctx)
         date_color = _resolve_color(self.date_color, ctx)
         label_color = _resolve_color(self.label_color, ctx)
 
-        padding = int(width * 0.04)
+        padding = max(4, int(width * 0.03))
         inner_width = width - padding * 2
         inner_height = height - padding * 2
 
-        # Calculate vertical space distribution
-        label_height = 0
-        date_height = 0
-        gap = 4
+        # Vertical space allocation — bias more toward the hero time.
+        label_height = int(inner_height * 0.12) if self.label else 0
+        date_height = int(inner_height * 0.16) if self.date_str else 0
+        gap = 2
 
-        if self.label:
-            label_height = int(inner_height * 0.12)
-
-        if self.date_str:
-            date_height = int(inner_height * 0.18)
-
-        # Time gets remaining space
+        # Time gets the remainder
         time_height = inner_height - label_height - date_height
         if self.label:
             time_height -= gap
         if self.date_str:
             time_height -= gap
 
-        # Starting Y position (centered in container)
         total_content = label_height + time_height + date_height
         if self.label:
             total_content += gap
@@ -79,41 +76,43 @@ class ClockDisplay(Component):
         current_y = start_y
         center_x = x + width // 2
 
-        # Draw label at top
+        # Caps-tracked label at top
         if self.label:
-            font_label = ctx.get_font("small")
-            ctx.draw_text(
-                self.label.upper(),
+            ctx.draw_label(
+                self.label,
                 (center_x, current_y + label_height // 2),
-                font=font_label,
                 color=label_color,
                 anchor="mm",
+                size="tertiary",
             )
             current_y += label_height + gap
 
-        # Draw time (fills available space)
+        # Hero time — bold, fills available space (watchOS large complication)
         time_font = ctx.fit_text(
             self.time_str,
-            max_width=int(inner_width * 0.95),
+            max_width=int(inner_width * 0.96),
             max_height=int(time_height * 0.95),
-            bold=False,
+            bold=True,
         )
         time_y = current_y + time_height // 2
 
         if self.ampm:
-            # 12-hour format: draw time + AM/PM
-            time_w, _ = ctx.get_text_size(self.time_str, time_font)
-            ampm_font = ctx.get_font("small")
+            # 12-hour: time + small tinted AM/PM
+            time_w, time_h = ctx.get_text_size(self.time_str, time_font)
+            ampm_font = ctx.get_font("tertiary", semibold=True)
             ampm_w, _ = ctx.get_text_size(self.ampm, ampm_font)
-            total_w = time_w + 4 + ampm_w
+            spacing = 4
+            total_w = time_w + spacing + ampm_w
             time_x = center_x - total_w // 2 + time_w // 2
             ctx.draw_text(
                 self.time_str, (time_x, time_y), font=time_font, color=time_color, anchor="mm"
             )
-            ampm_color = _resolve_color(THEME_TEXT_SECONDARY, ctx)
+            # AM/PM in primary tint (the theme's primary color), aligned to top
+            # of the time so it reads as a small superscript-like accent.
+            ampm_color = ctx.theme.primary if isinstance(self.time_color, tuple) and self.time_color == (-1, -1, -1) else time_color
             ctx.draw_text(
                 self.ampm,
-                (time_x + time_w // 2 + 4 + ampm_w // 2, time_y),
+                (time_x + time_w // 2 + spacing + ampm_w // 2, time_y - time_h // 4),
                 font=ampm_font,
                 color=ampm_color,
                 anchor="mm",
@@ -129,20 +128,15 @@ class ClockDisplay(Component):
 
         current_y += time_height + gap
 
-        # Draw date below time
+        # Caps-tracked date below
         if self.date_str:
-            date_font = ctx.fit_text(
-                self.date_str,
-                max_width=int(inner_width * 0.90),
-                max_height=int(date_height * 0.90),
-                bold=False,
-            )
-            ctx.draw_text(
+            ctx.draw_label(
                 self.date_str,
                 (center_x, current_y + date_height // 2),
-                font=date_font,
                 color=date_color,
                 anchor="mm",
+                size="tertiary",
+                adjust=+1,
             )
 
 
