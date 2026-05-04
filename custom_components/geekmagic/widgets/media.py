@@ -109,10 +109,18 @@ class ImageFill(Component):
 
 @dataclass
 class DarkOverlay(Component):
-    """Dark overlay that sits at the bottom portion of its container."""
+    """Vertical gradient scrim along the bottom of its container.
 
-    height_ratio: float = 0.35  # Portion of height to cover
-    color: Color = (10, 10, 10)
+    The top portion fades in from transparent to a near-black wash so the
+    text below it reads cleanly without a hard horizontal seam slicing
+    the album art.
+    """
+
+    height_ratio: float = 0.35  # Portion of height the gradient covers
+    color: Color = (8, 8, 8)
+    # Where (within the gradient band) the wash reaches full opacity. The
+    # remaining height below this is solid for legible captions.
+    solid_ratio: float = 0.55
 
     def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
         return (max_width, max_height)
@@ -120,7 +128,50 @@ class DarkOverlay(Component):
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
         overlay_height = int(height * self.height_ratio)
         overlay_y = y + height - overlay_height
-        ctx.draw_rect((x, overlay_y, x + width, y + height), fill=self.color)
+        # Number of horizontal bands to draw the gradient. More = smoother
+        # but slower; ~24 is plenty at 240px tall and renders in <1ms.
+        bands = max(8, overlay_height // 4)
+        fade_bands = max(1, int(bands * (1.0 - self.solid_ratio)))
+        for i in range(bands):
+            band_y1 = overlay_y + int(overlay_height * i / bands)
+            band_y2 = overlay_y + int(overlay_height * (i + 1) / bands)
+            if i < fade_bands:
+                # Linear ramp from transparent at the top to fully opaque
+                # at the seam where the solid section starts.
+                alpha = (i + 1) / fade_bands
+                _draw_alpha_rect(ctx, (x, band_y1, x + width, band_y2), self.color, alpha)
+            else:
+                ctx.draw_rect((x, band_y1, x + width, band_y2), fill=self.color)
+
+
+def _draw_alpha_rect(
+    ctx: RenderContext,
+    rect: tuple[int, int, int, int],
+    color: Color,
+    alpha: float,
+) -> None:
+    """Approximate an alpha-blended fill on an RGB context.
+
+    Reads the current pixel block from the underlying image, blends it
+    toward ``color`` by ``alpha``, and writes it back. Used by media
+    widgets to fade album art into a caption strip. Coordinates are in
+    unscaled widget-local pixels — we convert to the supersampled image
+    here.
+    """
+    x1, y1, x2, y2 = rect
+    if x2 <= x1 or y2 <= y1:
+        return
+    scale = ctx._renderer.scale  # noqa: SLF001 — controlled access
+    abs_x1, abs_y1, abs_x2, abs_y2 = ctx._abs_rect(rect)  # noqa: SLF001
+    sx1, sy1 = abs_x1 * scale, abs_y1 * scale
+    sx2, sy2 = abs_x2 * scale, abs_y2 * scale
+    if sx2 <= sx1 or sy2 <= sy1:
+        return
+    canvas = ctx._draw._image  # noqa: SLF001
+    region = canvas.crop((sx1, sy1, sx2, sy2))
+    overlay = Image.new("RGB", region.size, color)
+    blended = Image.blend(region, overlay, alpha)
+    canvas.paste(blended, (sx1, sy1))
 
 
 @dataclass
@@ -231,7 +282,7 @@ class AlbumArt(Component):
         if text_children:
             text_column = Column(
                 children=text_children,
-                align="start",
+                align="stretch",  # Give each child full width so truncation works
                 justify="end",  # Stack from bottom up
                 padding=padding,
                 gap=1,  # Minimal gap between items

@@ -588,6 +588,14 @@ class Renderer:
         # Convert to integer tuples
         int_points = [(int(p[0]), int(p[1])) for p in points]
 
+        # Draw a faint horizontal mid-line for context (helps the eye
+        # gauge how high/low values sit). Skipped when fill=False to
+        # keep simple sparklines clean.
+        if fill:
+            mid_y = y1 + (y2 - y1) // 2
+            grid = (color[0] // 6, color[1] // 6, color[2] // 6)
+            draw.line([(x1, mid_y), (x2, mid_y)], fill=grid, width=max(1, self._scale // 2))
+
         # Draw filled area
         if fill:
             fill_points = [(x1, y2), *int_points, (x2, y2)]
@@ -607,9 +615,37 @@ class Renderer:
                 fill_color = (color[0] // 3, color[1] // 3, color[2] // 3)
             draw.polygon(fill_points, fill=fill_color)
 
-        # Draw line
+        # Draw line with rounded joins by stamping circles at every point.
+        # PIL's draw.line uses square caps; the dots fill in the seams so
+        # the curve reads as one smooth stroke.
         if len(int_points) >= 2:
-            draw.line(int_points, fill=color, width=self._s(2))
+            line_w = self._s(2)
+            draw.line(int_points, fill=color, width=line_w)
+            r = max(1, line_w // 2 - 1)
+            if r > 0:
+                # Stamp every Nth point for performance — at 100+ points
+                # we don't need to round every seam.
+                step = max(1, len(int_points) // 60)
+                for i in range(0, len(int_points), step):
+                    px, py = int_points[i]
+                    draw.ellipse((px - r, py - r, px + r, py + r), fill=color)
+
+            # Highlight the most recent value with a small accent dot so
+            # the viewer can find "now" instantly.
+            last_x, last_y = int_points[-1]
+            dot_r = max(line_w, self._s(3))
+            # Outer ring uses dimmed color, inner uses full color for a
+            # subtle bullseye effect.
+            ring = (color[0] // 2, color[1] // 2, color[2] // 2)
+            draw.ellipse(
+                (last_x - dot_r, last_y - dot_r, last_x + dot_r, last_y + dot_r),
+                fill=ring,
+            )
+            inner_r = max(1, dot_r - line_w)
+            draw.ellipse(
+                (last_x - inner_r, last_y - inner_r, last_x + inner_r, last_y + inner_r),
+                fill=color,
+            )
 
     def draw_timeline_bar(
         self,
@@ -621,15 +657,17 @@ class Renderer:
     ) -> None:
         """Draw a timeline bar showing state changes over time.
 
-        Used for binary sensors where data is 0.0 (off) or 1.0 (on).
-        Each segment is colored based on the state at that time.
+        Renders as a thin neutral track with ``on_color`` segments raised
+        above it. A ``now`` marker dot at the right edge shows the
+        current state. This reads much more clearly than equal-height
+        colored stripes for binary sensor history.
 
         Args:
             draw: ImageDraw instance
             rect: (x1, y1, x2, y2) bounding box
             data: List of data points (0.0 for off, 1.0 for on)
             on_color: Color for "on" state (1.0)
-            off_color: Color for "off" state (0.0)
+            off_color: Color for "off" state (0.0) — used as muted track
         """
         if not data:
             return
@@ -638,23 +676,62 @@ class Renderer:
         # Scale coordinates
         x1, y1, x2, y2 = self._s(x1), self._s(y1), self._s(x2), self._s(y2)
         width = x2 - x1
+        height = y2 - y1
 
-        # Calculate segment width (each data point gets equal width)
-        segment_width = width / len(data)
+        # Track sits centered vertically at ~30% of cell height.
+        track_h = max(self._scale * 4, int(height * 0.30))
+        track_y1 = y1 + (height - track_h) // 2
+        track_y2 = track_y1 + track_h
 
-        # Draw each segment
-        for i, value in enumerate(data):
-            seg_x1 = x1 + i * segment_width
-            seg_x2 = x1 + (i + 1) * segment_width
+        # 1) Muted base track (the "ribbon")
+        track_bg = (off_color[0] // 3, off_color[1] // 3, off_color[2] // 3)
+        radius = max(1, track_h // 2)
+        draw.rounded_rectangle(
+            (x1, track_y1, x2 - 1, track_y2 - 1),
+            radius=radius,
+            fill=track_bg,
+        )
 
-            # Choose color based on value (1.0 = on, 0.0 = off)
-            color = on_color if value >= 0.5 else off_color
+        # 2) "On" segments as raised pills above the base track.
+        seg_w = width / len(data)
+        seg_y1 = y1 + (height - int(track_h * 1.4)) // 2
+        seg_y2 = seg_y1 + int(track_h * 1.4)
+        # Walk the data, coalescing consecutive on samples into a single
+        # rounded pill so the bar reads as continuous activity.
+        i = 0
+        n = len(data)
+        while i < n:
+            if data[i] >= 0.5:
+                j = i
+                while j < n and data[j] >= 0.5:
+                    j += 1
+                seg_x1 = int(x1 + i * seg_w)
+                seg_x2 = int(x1 + j * seg_w)
+                pill_radius = max(1, (seg_y2 - seg_y1) // 2)
+                draw.rounded_rectangle(
+                    (seg_x1, seg_y1, max(seg_x2, seg_x1 + pill_radius), seg_y2 - 1),
+                    radius=pill_radius,
+                    fill=on_color,
+                )
+                i = j
+            else:
+                i += 1
 
-            # Draw the segment as a filled rectangle
-            draw.rectangle(
-                [int(seg_x1), y1, int(seg_x2), y2],
-                fill=color,
-            )
+        # 3) "Now" cursor: a thin vertical accent line at the right edge
+        # so the viewer can find "now" without ambiguity about which end
+        # is the past. Color reflects current state.
+        is_on_now = data[-1] >= 0.5
+        cursor_color = (
+            on_color if is_on_now else (off_color[0] // 2, off_color[1] // 2, off_color[2] // 2)
+        )
+        cursor_w = max(1, self._scale)
+        cursor_x = x2 - cursor_w
+        # Cursor extends slightly above and below the on-pill height
+        cursor_pad = self._scale
+        draw.rectangle(
+            (cursor_x, seg_y1 - cursor_pad, x2, seg_y2 + cursor_pad - 1),
+            fill=cursor_color,
+        )
 
     def draw_arc(
         self,
