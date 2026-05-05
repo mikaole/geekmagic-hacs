@@ -27,7 +27,7 @@ from .const import (
     DEFAULT_SCREEN_CYCLE_INTERVAL,
     DOMAIN,
     LAYOUT_GRID_2X2,
-    THEME_CLASSIC,
+    THEME_WATCHOS,
 )
 from .device import GeekMagicDevice
 
@@ -96,7 +96,7 @@ class GeekMagicConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     "name": "Screen 1",
                     CONF_LAYOUT: LAYOUT_GRID_2X2,
-                    CONF_SCREEN_THEME: THEME_CLASSIC,
+                    CONF_SCREEN_THEME: THEME_WATCHOS,
                     CONF_WIDGETS: [{"type": "clock", "slot": 0}],
                 }
             ],
@@ -157,7 +157,7 @@ class GeekMagicOptionsFlow(config_entries.OptionsFlow):
                         {
                             "name": "Screen 1",
                             CONF_LAYOUT: LAYOUT_GRID_2X2,
-                            CONF_SCREEN_THEME: THEME_CLASSIC,
+                            CONF_SCREEN_THEME: THEME_WATCHOS,
                             CONF_WIDGETS: [{"type": "clock", "slot": 0}],
                         }
                     ],

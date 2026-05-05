@@ -24,7 +24,11 @@ from .theme import (
     SYSTEM_RED,
 )
 
-# Local convenience for muted gray that picks up theme.muted at render time.
+# Neutral gray for HVAC modes that don't have a semantic color (idle, off).
+# Stays a constant rather than reading theme.muted because the HVAC color
+# tables are module-level and built at import time, before any theme is in
+# scope. Themes that want a different "off" tint can override the climate
+# widget's color via WidgetConfig.color.
 _MUTED = (105, 105, 105)
 
 if TYPE_CHECKING:

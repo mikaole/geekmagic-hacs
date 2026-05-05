@@ -842,7 +842,7 @@ export class GeekMagicPanel extends LitElement {
         type: "geekmagic/views/create",
         name,
         layout: "grid_2x2",
-        theme: "classic",
+        theme: "watchos",
         widgets: [],
       });
       this._views = [...this._views, result.view];

@@ -21,7 +21,7 @@ class HeroCornerTL(Layout):
     Slots 3-5: Bottom row (3 equal)
     """
 
-    def __init__(self, padding: int = 8, gap: int = 8) -> None:
+    def __init__(self, padding: int | None = None, gap: int | None = None) -> None:
         """Initialize corner hero top-left layout."""
         super().__init__(padding=padding, gap=gap)
 
@@ -114,7 +114,7 @@ class HeroCornerTR(Layout):
     Slots 3-5: Bottom row (3 equal)
     """
 
-    def __init__(self, padding: int = 8, gap: int = 8) -> None:
+    def __init__(self, padding: int | None = None, gap: int | None = None) -> None:
         """Initialize corner hero top-right layout."""
         super().__init__(padding=padding, gap=gap)
 
@@ -208,7 +208,7 @@ class HeroCornerBL(Layout):
     Slot 4: Hero (bottom-left, 2x2)
     """
 
-    def __init__(self, padding: int = 8, gap: int = 8) -> None:
+    def __init__(self, padding: int | None = None, gap: int | None = None) -> None:
         """Initialize corner hero bottom-left layout."""
         super().__init__(padding=padding, gap=gap)
 
@@ -303,7 +303,7 @@ class HeroCornerBR(Layout):
     Slot 4: Hero (bottom-right, 2x2)
     """
 
-    def __init__(self, padding: int = 8, gap: int = 8) -> None:
+    def __init__(self, padding: int | None = None, gap: int | None = None) -> None:
         """Initialize corner hero bottom-right layout."""
         super().__init__(padding=padding, gap=gap)
 

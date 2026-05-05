@@ -41,6 +41,7 @@ CONF_SCREEN_THEME = "theme"
 DEFAULT_SCREEN_CYCLE_INTERVAL = 0  # 0 = manual only, >0 = seconds between screens
 
 # Theme types
+THEME_WATCHOS = "watchos"
 THEME_CLASSIC = "classic"
 THEME_MINIMAL = "minimal"
 THEME_NEON = "neon"
@@ -53,7 +54,10 @@ THEME_FOREST = "forest"
 THEME_CANDY = "candy"
 
 # Theme display names for UI
+# watchOS is listed first so it appears at the top of the dropdown — it's
+# the new default theme (Apple watchOS HIG-inspired).
 THEME_OPTIONS = {
+    THEME_WATCHOS: "watchOS",
     THEME_CLASSIC: "Classic",
     THEME_MINIMAL: "Minimal",
     THEME_NEON: "Neon",

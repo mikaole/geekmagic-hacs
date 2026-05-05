@@ -38,18 +38,52 @@ class Layout(ABC):
         """Initialize the layout.
 
         Args:
-            padding: Padding around the edges (defaults to theme.layout_padding)
-            gap: Gap between widgets (defaults to theme.gap)
+            padding: Padding around the edges. When ``None`` (default),
+                ``self.padding`` resolves to the active theme's
+                ``layout_padding`` at access time, so changing the theme
+                via ``layout.theme = ...`` automatically updates spacing.
+                Passing an explicit value pins it and ignores the theme.
+            gap: Gap between widgets. Same semantics as ``padding``.
         """
-        self.theme: Theme = DEFAULT_THEME  # Default theme, can be overridden
-        # Use theme defaults when not explicitly provided so themes can tune
-        # whitespace globally without each layout opting in.
-        self.padding = self.theme.layout_padding if padding is None else padding
-        self.gap = self.theme.gap if gap is None else gap
+        self._padding_override = padding
+        self._gap_override = gap
+        self._theme: Theme = DEFAULT_THEME
         self.width = DISPLAY_WIDTH
         self.height = DISPLAY_HEIGHT
         self.slots: list[Slot] = []
         self._calculate_slots()
+
+    @property
+    def padding(self) -> int:
+        """Outer padding — explicit override or theme default."""
+        return (
+            self._padding_override
+            if self._padding_override is not None
+            else self._theme.layout_padding
+        )
+
+    @property
+    def gap(self) -> int:
+        """Inter-widget gap — explicit override or theme default."""
+        return self._gap_override if self._gap_override is not None else self._theme.gap
+
+    @property
+    def theme(self) -> Theme:
+        """Active theme."""
+        return self._theme
+
+    @theme.setter
+    def theme(self, value: Theme) -> None:
+        """Set the active theme and rebuild slots so theme-driven padding/gap
+        actually take effect (e.g. retro/soft/candy ship larger padding=8)."""
+        self._theme = value
+        # Recompute slot rectangles with the new theme's padding/gap, but
+        # preserve any widgets already placed in those slots.
+        existing_widgets = [slot.widget for slot in self.slots]
+        self._calculate_slots()
+        for i, widget in enumerate(existing_widgets):
+            if widget is not None and i < len(self.slots):
+                self.slots[i].widget = widget
 
     @abstractmethod
     def _calculate_slots(self) -> None:

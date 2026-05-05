@@ -749,7 +749,7 @@ let g = class extends O {
           type: "geekmagic/views/create",
           name: s,
           layout: "grid_2x2",
-          theme: "classic",
+          theme: "watchos",
           widgets: []
         });
         this._views = [...this._views, e.view], this._editView(e.view);

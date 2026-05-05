@@ -1009,8 +1009,6 @@ class Renderer:
         canvas: Image.Image = draw._image  # noqa: SLF001
         w = max(1, x2 - x1)
         h = max(1, y2 - y1)
-        if w <= 0 or h <= 0:
-            return
 
         # Build an RGBA gradient overlay with alpha 0..255 along the axis.
         overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))

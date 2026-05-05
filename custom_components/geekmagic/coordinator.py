@@ -58,7 +58,7 @@ from .const import (
     LAYOUT_THREE_ROW,
     MAX_BACKOFF_MULTIPLIER,
     MODEL_PRO,
-    THEME_CLASSIC,
+    THEME_WATCHOS,
 )
 from .device import DeviceState, GeekMagicDevice, SpaceInfo
 from .layouts.corner_hero import HeroCornerBL, HeroCornerBR, HeroCornerTL, HeroCornerTR
@@ -459,7 +459,7 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         layout = layout_class()
 
         # Set theme on layout
-        theme_name = screen_config.get(CONF_SCREEN_THEME, THEME_CLASSIC)
+        theme_name = screen_config.get(CONF_SCREEN_THEME, THEME_WATCHOS)
         layout.theme = get_theme(theme_name)
 
         widgets_config = screen_config.get(CONF_WIDGETS, [])
@@ -786,7 +786,7 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         if not message:
             layout = FullscreenLayout()
             # Apply theme if specified
-            theme_name = data.get("theme", THEME_CLASSIC)
+            theme_name = data.get("theme", THEME_WATCHOS)
             layout.theme = get_theme(theme_name)
 
             hero_widget = None
@@ -827,7 +827,7 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         layout = HeroSimpleLayout()
 
         # Apply theme if specified
-        theme_name = data.get("theme", THEME_CLASSIC)
+        theme_name = data.get("theme", THEME_WATCHOS)
         layout.theme = get_theme(theme_name)
 
         # Slot 0 (Hero): Icon or Image

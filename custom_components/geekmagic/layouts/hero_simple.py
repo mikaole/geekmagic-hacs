@@ -23,8 +23,8 @@ class HeroSimpleLayout(Layout):
     def __init__(
         self,
         hero_ratio: float = 0.66,
-        padding: int = 8,
-        gap: int = 8,
+        padding: int | None = None,
+        gap: int | None = None,
     ) -> None:
         """Initialize hero simple layout.
 
