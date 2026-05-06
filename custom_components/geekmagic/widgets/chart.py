@@ -78,21 +78,28 @@ class ChartDisplay(Component):
                 if show_range:
                     min_val = min(self.data)
                     max_val = max(self.data)
-                    range_y = chart_bottom + int(height * 0.08)
-                    ctx.draw_text(
-                        f"{min_val:.1f}",
-                        (x + padding, range_y),
-                        font=font_label,
-                        color=THEME_TEXT_SECONDARY,
-                        anchor="lm",
-                    )
-                    ctx.draw_text(
-                        f"{max_val:.1f}",
-                        (x + width - padding, range_y),
-                        font=font_label,
-                        color=THEME_TEXT_SECONDARY,
-                        anchor="rm",
-                    )
+                    min_text = f"{min_val:.1f}"
+                    max_text = f"{max_val:.1f}"
+                    # Skip range labels if they'd overlap (combined width >
+                    # available area minus a small gap).
+                    min_w, _ = ctx.get_text_size(min_text, font_label)
+                    max_w, _ = ctx.get_text_size(max_text, font_label)
+                    if min_w + max_w + 8 <= inner_w:
+                        range_y = chart_bottom + int(height * 0.08)
+                        ctx.draw_text(
+                            min_text,
+                            (x + padding, range_y),
+                            font=font_label,
+                            color=THEME_TEXT_SECONDARY,
+                            anchor="lm",
+                        )
+                        ctx.draw_text(
+                            max_text,
+                            (x + width - padding, range_y),
+                            font=font_label,
+                            color=THEME_TEXT_SECONDARY,
+                            anchor="rm",
+                        )
         else:
             center_x = x + width // 2
             center_y = (chart_top + chart_bottom) // 2

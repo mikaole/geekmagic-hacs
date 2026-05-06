@@ -60,9 +60,13 @@ def header_mode(
     inline_fits = label_w + value_w + 4 <= inner_w
     stacked_h_needed = label_h + value_h + 4
     stack_fits = stacked_h_needed <= int(height * 0.32) and height >= 90
+    # In stacked mode the label gets full inner_w but also has to fit the
+    # value beneath it. If the label is wider than inner_w we'd render an
+    # ellipsis-only stub — drop to value_only instead.
+    label_fits = label_w <= inner_w
     if inline_fits:
         return "inline"
-    if stack_fits:
+    if stack_fits and label_fits:
         return "stacked"
     return "value_only"
 
@@ -125,6 +129,9 @@ def render_label_value_header(
             justify="center",
         ).render(ctx, x, y, width, header_height)
     elif mode == "inline":
+        # In inline mode header_mode has already verified label_w + value_w
+        # fits — no need for truncate, which can collapse a short label to
+        # "…" if the flex layout assigns it sub-pixel less than measured.
         Row(
             children=[
                 Text(
@@ -132,7 +139,6 @@ def render_label_value_header(
                     font="small",
                     color=THEME_TEXT_SECONDARY,
                     align="start",
-                    truncate=True,
                 ),
                 Spacer(),
                 Text(
