@@ -68,7 +68,7 @@ class BarGauge(Component):
 
     - `compact` (default for landscape cells): caps label + value pinned
       to the top of the cell, thicker tinted bar pinned to the bottom
-      via `justify="space-between"`. Fills the cell height.
+      via `justify="space-evenly"`. Fills the cell height.
     - `stacked` (auto on cells ≥100x100, square-ish): caps label centred
       top, big bold tinted value centred middle (auto-fit), thick bar
       bottom — Apple-Watch Modular-Large bar pattern.
@@ -132,7 +132,7 @@ class BarGauge(Component):
             gap=5,
             padding=self.padding,
             align="stretch",
-            justify="space-between",
+            justify="space-evenly",
             children=[
                 Adaptive(children=[c for c in header_children if c is not None], gap=6),
                 Bar(percent=self.percent, color=self.color, background=self.background),
@@ -155,7 +155,7 @@ class BarGauge(Component):
             gap=4,
             padding=self.padding,
             align="stretch",
-            justify="space-between",
+            justify="space-evenly",
             children=[
                 Row(
                     children=[
@@ -637,7 +637,7 @@ def StatusIndicator(
     return Row(
         gap=10,
         align="center",
-        justify="space-between",
+        justify="space-evenly",
         children=[
             Row(
                 gap=8,
@@ -688,7 +688,7 @@ def ProgressRow(
         children=[
             Row(
                 gap=6,
-                justify="space-between",
+                justify="space-evenly",
                 children=[c for c in header_children if c is not None],
             ),
             Row(

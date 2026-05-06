@@ -9,6 +9,7 @@ from ..const import PLACEHOLDER_NAME, PLACEHOLDER_VALUE
 from .base import Widget, WidgetConfig
 from .components import (
     THEME_PRIMARY,
+    THEME_TEXT_PRIMARY,
     THEME_TEXT_SECONDARY,
     Color,
     Column,
@@ -201,7 +202,14 @@ class AttributeListWidget(Widget):
     def render(self, ctx: RenderContext, state: WidgetState) -> Component:
         """Render the attribute list widget."""
         entity = state.entity
-        color = self.config.color or ctx.theme.get_accent_color(self.config.slot)
+        # Per design system: list-row values default to text_primary (white)
+        # — they're "values", not gauge accents. Users (or per-attribute
+        # config) can still tint individual rows by passing an explicit
+        # `color`. self.config.color overrides the default for the whole
+        # widget; the slot accent is only used as a final fallback when
+        # the widget config explicitly marks the colour as
+        # accent-controlled (kept for backwards compat).
+        default_color: Color = self.config.color or THEME_TEXT_PRIMARY
 
         items: list[tuple[str, str, Color]] = []
 
@@ -210,14 +218,14 @@ class AttributeListWidget(Widget):
             if isinstance(attr_config, dict):
                 key = attr_config.get("key", "")
                 label = attr_config.get("label", key)
-                item_color = attr_config.get("color", color)
+                item_color = attr_config.get("color", default_color)
                 if isinstance(item_color, list):
                     item_color = tuple(item_color)
             else:
                 # Simple string format: use attribute name as both key and label
                 key = str(attr_config)
                 label = key
-                item_color = color
+                item_color = default_color
 
             # Get value from entity
             if entity is None:

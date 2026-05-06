@@ -101,8 +101,10 @@ class ClimateDisplay(Component):
         single-line summary at the bottom (target / humidity).
       - compact: tight 2-row layout for small grid cells.
 
-    Every variant uses justify="space-between" so content spreads to use
-    every pixel of the allotted cell rather than clustering centred.
+    Every variant uses justify="space-evenly" so content spreads to use
+    every pixel of the allotted cell rather than clustering centred —
+    equal gaps before/between/after each band feel more balanced than
+    pinning the first/last items flush to the cell edges.
     """
 
     current_temp: float | int | str | None = None
@@ -252,7 +254,7 @@ class ClimateDisplay(Component):
             children=[top_band, hero, bottom_band],
             padding=padding,
             align="stretch",
-            justify="space-between",
+            justify="space-evenly",
         )
 
     def _build_medium(self, ctx: RenderContext, width: int, height: int) -> Component:
@@ -324,7 +326,7 @@ class ClimateDisplay(Component):
             children=[top_band, hero, bottom_band],
             padding=padding,
             align="stretch",
-            justify="space-between",
+            justify="space-evenly",
         )
 
     def _build_compact(self, ctx: RenderContext, width: int, height: int) -> Component:
@@ -378,7 +380,7 @@ class ClimateDisplay(Component):
                 children=children,
                 padding=padding,
                 align="stretch",
-                justify="space-between" if detail_parts else "center",
+                justify="space-evenly" if detail_parts else "center",
             )
 
         # Minimal layout for very short cells (under 65px height): one row.

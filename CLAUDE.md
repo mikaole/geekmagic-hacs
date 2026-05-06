@@ -240,8 +240,15 @@ tint.** That's where the colour lives.
   above. If you're tempted, the icon should probably be tinted instead.
 - Don't use `Column(justify="center")` if the cell is taller than the
   natural content height — content will cluster centred and waste space.
-  Use `justify="space-between"` + a `Spacer()` if needed to push the last
-  child to the bottom.
+  Default to `justify="space-evenly"` for top-to-bottom content
+  distribution: it puts equal spacing before, between, and after the
+  children, which reads better in most cells than `space-between`
+  (which pins the first/last children flush to the edges and can leave
+  them feeling crowded). Only fall back to `space-between` when the
+  cell is so short that any breathing room would push content off
+  screen, or when you specifically want the first/last items hard
+  against the cell edge. For Rows (horizontal), `space-between` is
+  still the right call (label left / value right pattern).
 - Don't use absolute `Padding(top=..., bottom=...)` for layout when child
   heights vary with cell size — they only work at the exact tuning point.
   Prefer flex-style Column/Row with `Spacer`.

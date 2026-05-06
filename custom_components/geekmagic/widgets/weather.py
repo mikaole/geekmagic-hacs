@@ -295,7 +295,7 @@ class WeatherDisplay(Component):
                 children=[main_weather, forecast_component],
                 gap=int(height * 0.10),
                 align="center",
-                justify="space-between",
+                justify="space-evenly",
             )
         # Just main weather
         return main_weather
@@ -392,7 +392,7 @@ class WeatherDisplay(Component):
             children=[left_side, right_side],
             gap=padding,
             align="center",
-            justify="space-between",
+            justify="space-evenly",
             padding=padding,
         )
 

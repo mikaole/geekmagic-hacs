@@ -108,7 +108,7 @@ def _resolve_color(color: Color, ctx: RenderContext) -> Color:
 
 
 Align = Literal["start", "center", "end", "stretch"]
-Justify = Literal["start", "center", "end", "space-between", "space-around"]
+Justify = Literal["start", "center", "end", "space-between", "space-around", "space-evenly"]
 
 
 def _to_justify(justify: Justify) -> JustifyContent:
@@ -119,6 +119,7 @@ def _to_justify(justify: Justify) -> JustifyContent:
         "end": JustifyContent.END,
         "space-between": JustifyContent.SPACE_BETWEEN,
         "space-around": JustifyContent.SPACE_AROUND,
+        "space-evenly": JustifyContent.SPACE_EVENLY,
     }
     return mapping.get(justify, JustifyContent.START)
 

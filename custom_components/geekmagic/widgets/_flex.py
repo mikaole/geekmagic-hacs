@@ -34,8 +34,9 @@ class JustifyContent(Enum):
     START = auto()
     CENTER = auto()
     END = auto()
-    SPACE_BETWEEN = auto()
-    SPACE_AROUND = auto()
+    SPACE_BETWEEN = auto()  # First/last pinned to edges, gaps between
+    SPACE_AROUND = auto()  # Half-gap before first / after last
+    SPACE_EVENLY = auto()  # Equal gaps before, between, after
 
 
 class AlignItems(Enum):
@@ -213,6 +214,10 @@ class Node:
         elif self.justify_content is JustifyContent.SPACE_AROUND:
             extra_gap = extra / n if n > 0 else 0.0
             offset = extra_gap / 2.0
+        elif self.justify_content is JustifyContent.SPACE_EVENLY:
+            # Equal gap before first, between, and after last child.
+            extra_gap = extra / (n + 1) if n > 0 else 0.0
+            offset = extra_gap
         else:  # pragma: no cover - exhaustive enum
             offset, extra_gap = 0.0, 0.0
 
