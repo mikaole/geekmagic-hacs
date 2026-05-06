@@ -322,9 +322,11 @@ class VerticalBar(Component):
     width: int | None = None  # None = sensible default relative to container
 
     def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
-        # Default thickness: ~22% of available width, capped at 24px so it
-        # doesn't dominate small cells. Symmetric to Bar's default height.
-        w = self.width or max(8, min(24, int(max_width * 0.22)))
+        # Default thickness: ~30% of available width, clamped to 12..32 so
+        # it reads as a substantial column without dominating small cells.
+        # (Bumped from 22%/24-cap so vertical gauges feel "a bit larger" —
+        # they look orphaned at the previous narrower default.)
+        w = self.width or max(12, min(32, int(max_width * 0.30)))
         return (w, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
@@ -334,11 +336,14 @@ class VerticalBar(Component):
         fill_color = _resolve_color(self.color, ctx)
         bg_color = _resolve_color(bg_raw, ctx)
 
-        # Round the corners proportional to width — same look as horizontal Bar.
-        radius = max(2, width // 2)
-        # Track fills the full height.
+        # Match horizontal Bar's radius (small fixed value). A larger radius
+        # (e.g. width // 2) makes the fill's *top* corners round prominently
+        # — that creates a visible "dip" line where the fill ends, which
+        # users mistake for an unwanted gap. Keeping radius small (2px) makes
+        # the artifact imperceptible while preserving consistent rounding
+        # with horizontal bars.
+        radius = 2
         ctx.draw_rounded_rect((x, y, x + width, y + height), radius=radius, fill=bg_color)
-        # Fill rises from the bottom by `percent` of the available height.
         pct = max(0.0, min(100.0, self.percent))
         fill_h = int(height * pct / 100)
         if fill_h > 0:

@@ -13,7 +13,6 @@ from .components import (
     THEME_MUTED,
     THEME_PRIMARY,
     THEME_SUCCESS,
-    THEME_TEXT_PRIMARY,
     THEME_TEXT_SECONDARY,
     THEME_WARNING,
     Color,
@@ -92,7 +91,18 @@ def _format_temp(value: float | str | None, unit: str = "°") -> str:
 
 @dataclass
 class ClimateDisplay(Component):
-    """Climate display component."""
+    """Climate display component with cell-shape-aware layouts.
+
+    Three layouts:
+      - full: hero temp dominates the cell, mode label caps-tracked at
+        top, target + humidity row pinned to the bottom — fills the cell.
+      - medium: caps mode label top, bold hero temp middle (auto-fit),
+        single-line summary at the bottom (target / humidity).
+      - compact: tight 2-row layout for small grid cells.
+
+    Every variant uses justify="space-between" so content spreads to use
+    every pixel of the allotted cell rather than clustering centred.
+    """
 
     current_temp: float | int | str | None = None
     target_temp: float | int | str | None = None
@@ -109,10 +119,8 @@ class ClimateDisplay(Component):
         return (max_width, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        """Render climate widget."""
+        """Render climate widget — picks layout from cell shape."""
         size = get_size_category(height)
-
-        # Also consider width - narrow widgets need compact layouts even if tall
         is_very_narrow = width < 90  # 3-column grids
         is_narrow = width < 130  # 2-column side-by-side
 
@@ -126,7 +134,7 @@ class ClimateDisplay(Component):
         component.render(ctx, x, y, width, height)
 
     def _get_icon_and_color(self) -> tuple[str, tuple[int, int, int]]:
-        """Get icon and color based on hvac_action or hvac_mode."""
+        """Get icon + theme-role color sentinel based on hvac_action/mode."""
         if self.hvac_action and self.hvac_action != "idle":
             icon = HVAC_ACTION_ICONS.get(self.hvac_action, "thermostat")
             color = HVAC_ACTION_ROLES.get(self.hvac_action, THEME_PRIMARY)
@@ -135,349 +143,219 @@ class ClimateDisplay(Component):
             color = HVAC_MODE_ROLES.get(self.hvac_mode, THEME_PRIMARY)
         return icon, color
 
-    def _build_full(self, ctx: RenderContext, width: int, height: int) -> Component:
-        """Build full climate layout with all details."""
-        padding = int(width * 0.04)
-        icon_name, color = self._get_icon_and_color()
+    def _mode_label(self) -> str | None:
+        """Return the HVAC mode/action as a display string, or None."""
+        if not self.show_mode:
+            return None
+        text = self.hvac_action or self.hvac_mode
+        if not text:
+            return None
+        return text.replace("_", " ").upper()
 
-        # Scale icon based on height - larger for fullscreen
-        icon_size = max(32, int(height * 0.28))
-
-        # Current temperature is the primary value
-        current_str = _format_temp(self.current_temp, self.temp_unit)
-
-        # Build main column with icon and current temp
-        main_children: list[Component] = [
-            Icon(icon_name, size=icon_size, color=color),
-            Text(current_str, font="huge", bold=True, color=color),
-        ]
-
-        # Add target temperature if enabled and available
-        if self.show_target and self.target_temp is not None:
-            target_str = _format_temp(self.target_temp)
-            target_icon_size = max(14, int(height * 0.08))
-            main_children.append(
-                Row(
-                    children=[
-                        Icon("target", size=target_icon_size, color=THEME_TEXT_SECONDARY),
-                        Text(target_str, font="regular", color=THEME_TEXT_SECONDARY),
-                    ],
-                    gap=6,
-                    align="center",
-                    justify="center",
-                )
-            )
-
-        main_weather = Column(
-            children=main_children,
-            gap=int(height * 0.03),
+    def _humidity_chip(self, icon_size: int, font: str = "small") -> Component | None:
+        """Build a humidity icon+value chip, or None if disabled/unset."""
+        if not self.show_humidity or self.humidity is None:
+            return None
+        try:
+            humidity_val = int(float(self.humidity))
+        except (ValueError, TypeError):
+            return None
+        return Row(
+            children=[
+                Icon("water-percent", size=icon_size, color=THEME_INFO),
+                Text(f"{humidity_val}%", font=font, color=THEME_INFO),
+            ],
+            gap=4,
             align="center",
-            justify="center",
-            padding=padding,
         )
 
-        # Bottom info row with humidity and/or mode
-        bottom_children: list[Component] = []
+    def _target_chip(self, icon_size: int, font: str = "small") -> Component | None:
+        """Build a target-temperature chip, or None if disabled/unset."""
+        if not self.show_target or self.target_temp is None:
+            return None
+        target_str = _format_temp(self.target_temp)
+        return Row(
+            children=[
+                Icon("target", size=icon_size, color=THEME_TEXT_SECONDARY),
+                Text(target_str, font=font, color=THEME_TEXT_SECONDARY),
+            ],
+            gap=4,
+            align="center",
+        )
 
-        if self.show_humidity and self.humidity is not None:
-            try:
-                humidity_val = int(float(self.humidity))
-                humidity_icon_size = max(14, int(height * 0.08))
-                bottom_children.append(
-                    Row(
-                        children=[
-                            Icon("water-percent", size=humidity_icon_size, color=THEME_INFO),
-                            Text(f"{humidity_val}%", font="small", color=THEME_INFO),
-                        ],
-                        gap=6,
-                        align="center",
-                    )
+    def _build_full(self, ctx: RenderContext, width: int, height: int) -> Component:
+        """Hero layout for cells >=130x130: caps mode label + icon at top,
+        bold huge temperature middle (auto-fit), target+humidity bottom.
+        Three bands distributed via justify=space-between so the cell is
+        completely filled.
+        """
+        padding = int(width * 0.04)
+        icon_name, color = self._get_icon_and_color()
+        icon_size = max(28, int(height * 0.20))
+        current_str = _format_temp(self.current_temp, self.temp_unit)
+        mode_label = self._mode_label()
+
+        # ── Top band: caps mode label + tinted icon ──────────────────
+        top_children: list[Component] = []
+        if mode_label and self.show_mode:
+            top_children.append(Text(mode_label, font="tiny", color=color, truncate=True))
+        top_children.append(Icon(icon_name, size=icon_size, color=color))
+        top_band = Column(
+            children=top_children,
+            gap=int(height * 0.02),
+            align="center",
+            justify="start",
+        )
+
+        # ── Middle: hero temperature (auto-fit to fill the band) ─────
+        # Use font="huge" + auto_fit so the temp dominates the cell.
+        hero = Row(
+            children=[
+                Text(
+                    current_str,
+                    font="huge",
+                    bold=True,
+                    color=color,
+                    align="center",
+                    auto_fit=True,
                 )
-            except (ValueError, TypeError):
-                pass
+            ],
+            justify="center",
+            align="center",
+        )
 
-        if self.show_mode:
-            # Show hvac action if available, otherwise mode
-            display_text = self.hvac_action or self.hvac_mode
-            if display_text:
-                bottom_children.append(
-                    Text(
-                        display_text.replace("_", " ").title(),
-                        font="small",
-                        color=color,
-                    )
-                )
-
-        if bottom_children:
-            bottom_row = Row(
-                children=bottom_children,
+        # ── Bottom band: target + humidity, side by side ─────────────
+        bottom_chips: list[Component] = []
+        target_chip = self._target_chip(max(12, int(height * 0.06)), font="small")
+        humid_chip = self._humidity_chip(max(12, int(height * 0.06)), font="small")
+        if target_chip:
+            bottom_chips.append(target_chip)
+        if humid_chip:
+            bottom_chips.append(humid_chip)
+        bottom_band: Component
+        if bottom_chips:
+            bottom_band = Row(
+                children=bottom_chips,
                 gap=int(width * 0.10),
                 align="center",
                 justify="center",
-                padding=padding,
             )
-            return Column(
-                children=[main_weather, bottom_row],
-                gap=int(height * 0.02),
-                align="center",
-                justify="space-between",
-            )
+        else:
+            bottom_band = Row(children=[], align="center", justify="center")
 
-        return main_weather
+        return Column(
+            children=[top_band, hero, bottom_band],
+            padding=padding,
+            align="stretch",
+            justify="space-between",
+        )
 
     def _build_medium(self, ctx: RenderContext, width: int, height: int) -> Component:
-        """Build medium climate layout."""
+        """Layout for 2x2-ish cells (~100-140px in both axes).
+
+        Three rows distributed top-to-bottom:
+          1. caps mode label + tinted icon (compact row)
+          2. bold hero temperature (auto-fit, dominates)
+          3. target + humidity chips (single line)
+
+        Uses justify=space-between so all three bands stretch to fill the
+        cell — the previous justify=center left ~50% of the cell empty.
+        """
         padding = int(width * 0.04)
         icon_name, color = self._get_icon_and_color()
+        icon_size = max(16, min(24, int(height * 0.18)))
+        current_str = _format_temp(self.current_temp, self.temp_unit)
+        mode_label = self._mode_label()
 
-        # For narrow+tall layouts (1x2), use vertical stacking
-        is_tall = height > width * 1.5
+        # Top: caps mode + small icon, centred horizontally.
+        top_pieces: list[Component] = [Icon(icon_name, size=icon_size, color=color)]
+        if mode_label and self.show_mode:
+            top_pieces.append(Text(mode_label, font="tiny", color=color, truncate=True))
+        top_band = Row(
+            children=top_pieces,
+            gap=6,
+            align="center",
+            justify="center",
+        )
 
-        if is_tall:
-            # Vertical layout for narrow tall containers
-            icon_size = max(24, int(height * 0.18))
-            current_str = _format_temp(self.current_temp, self.temp_unit)
-
-            main_children: list[Component] = [
-                Icon(icon_name, size=icon_size, color=color),
-                Text(current_str, font="xlarge", bold=True, color=color),
-            ]
-
-            # Add target temperature
-            if self.show_target and self.target_temp is not None:
-                target_str = _format_temp(self.target_temp)
-                main_children.append(
-                    Row(
-                        children=[
-                            Icon("target", size=12, color=THEME_TEXT_SECONDARY),
-                            Text(target_str, font="small", color=THEME_TEXT_SECONDARY),
-                        ],
-                        gap=4,
-                        align="center",
-                        justify="center",
-                    )
+        # Middle: hero temp.
+        hero = Row(
+            children=[
+                Text(
+                    current_str,
+                    font="xlarge",
+                    bold=True,
+                    color=color,
+                    align="center",
+                    auto_fit=True,
                 )
+            ],
+            justify="center",
+            align="center",
+        )
 
-            # Add humidity
-            if self.show_humidity and self.humidity is not None:
-                try:
-                    humidity_val = int(float(self.humidity))
-                    main_children.append(
-                        Row(
-                            children=[
-                                Icon("water-percent", size=12, color=THEME_INFO),
-                                Text(f"{humidity_val}%", font="small", color=THEME_INFO),
-                            ],
-                            gap=4,
-                            align="center",
-                            justify="center",
-                        )
-                    )
-                except (ValueError, TypeError):
-                    pass
-
-            # Add mode at bottom
-            if self.show_mode:
-                display_text = self.hvac_action or self.hvac_mode
-                if display_text:
-                    main_children.append(
-                        Text(
-                            display_text.replace("_", " ").title(),
-                            font="small",
-                            color=color,
-                        )
-                    )
-
-            return Column(
-                children=main_children,
-                gap=int(height * 0.04),
-                padding=padding,
+        # Bottom: chips
+        chip_size = max(10, int(height * 0.07))
+        bottom_chips: list[Component] = []
+        target_chip = self._target_chip(chip_size, font="tiny")
+        humid_chip = self._humidity_chip(chip_size, font="tiny")
+        if target_chip:
+            bottom_chips.append(target_chip)
+        if humid_chip:
+            bottom_chips.append(humid_chip)
+        bottom_band: Component
+        if bottom_chips:
+            bottom_band = Row(
+                children=bottom_chips,
+                gap=10,
                 align="center",
                 justify="center",
             )
-
-        # Horizontal layout for wider containers (2x2, etc.)
-        icon_size = max(20, int(height * 0.22))
-        current_str = _format_temp(self.current_temp, self.temp_unit)
-
-        top_row = Row(
-            children=[
-                Icon(icon_name, size=icon_size, color=color),
-                Text(current_str, font="large", bold=True, color=color),
-            ],
-            gap=int(width * 0.04),
-            align="center",
-            justify="center",
-        )
-
-        children: list[Component] = [top_row]
-
-        # For small cells, use 2 rows: target+humidity, then mode
-        # For larger cells, fit more on one row
-        is_small = width < 115
-
-        if is_small:
-            # Row 1: target + humidity
-            row1_parts: list[Component] = []
-            if self.show_target and self.target_temp is not None:
-                target_str = _format_temp(self.target_temp)
-                row1_parts.append(
-                    Row(
-                        children=[
-                            Icon("target", size=10, color=THEME_TEXT_SECONDARY),
-                            Text(target_str, font="tiny", color=THEME_TEXT_SECONDARY),
-                        ],
-                        gap=2,
-                        align="center",
-                    )
-                )
-            if self.show_humidity and self.humidity is not None:
-                try:
-                    humidity_val = int(float(self.humidity))
-                    row1_parts.append(
-                        Row(
-                            children=[
-                                Icon("water-percent", size=10, color=THEME_INFO),
-                                Text(f"{humidity_val}%", font="tiny", color=THEME_INFO),
-                            ],
-                            gap=2,
-                            align="center",
-                        )
-                    )
-                except (ValueError, TypeError):
-                    pass
-            if row1_parts:
-                children.append(
-                    Row(
-                        children=row1_parts,
-                        gap=8,
-                        align="center",
-                        justify="center",
-                    )
-                )
-
-            # Row 2: mode
-            if self.show_mode:
-                display_text = self.hvac_action or self.hvac_mode
-                if display_text:
-                    children.append(
-                        Text(
-                            display_text.replace("_", " ").title(),
-                            font="tiny",
-                            color=color,
-                        )
-                    )
         else:
-            # Single row with all info for larger cells
-            bottom_parts: list[Component] = []
-            if self.show_target and self.target_temp is not None:
-                target_str = _format_temp(self.target_temp)
-                bottom_parts.append(
-                    Row(
-                        children=[
-                            Icon("target", size=10, color=THEME_TEXT_SECONDARY),
-                            Text(target_str, font="tiny", color=THEME_TEXT_SECONDARY),
-                        ],
-                        gap=2,
-                        align="center",
-                    )
-                )
-            if self.show_humidity and self.humidity is not None:
-                try:
-                    humidity_val = int(float(self.humidity))
-                    bottom_parts.append(
-                        Row(
-                            children=[
-                                Icon("water-percent", size=10, color=THEME_INFO),
-                                Text(f"{humidity_val}%", font="tiny", color=THEME_INFO),
-                            ],
-                            gap=2,
-                            align="center",
-                        )
-                    )
-                except (ValueError, TypeError):
-                    pass
-            if self.show_mode:
-                display_text = self.hvac_action or self.hvac_mode
-                if display_text:
-                    bottom_parts.append(
-                        Text(
-                            display_text.replace("_", " ").title(),
-                            font="tiny",
-                            color=color,
-                        )
-                    )
-            if bottom_parts:
-                children.append(
-                    Row(
-                        children=bottom_parts,
-                        gap=12,
-                        align="center",
-                        justify="center",
-                    )
-                )
+            bottom_band = Row(children=[], align="center", justify="center")
 
         return Column(
-            children=children,
-            gap=int(height * 0.04),
+            children=[top_band, hero, bottom_band],
             padding=padding,
-            align="center",
-            justify="center",
+            align="stretch",
+            justify="space-between",
         )
 
     def _build_compact(self, ctx: RenderContext, width: int, height: int) -> Component:
-        """Build compact climate layout for small spaces."""
-        padding = int(width * 0.04)
-        icon_name, color = self._get_icon_and_color()
+        """Tight 2-row layout for small grid cells (3x2, 3x3, MICRO/TINY).
 
+        Top: icon + bold tinted temp on one row.
+        Bottom: target + humidity on one row (drops if the cell is too
+        short — has_room_for_details gate).
+        Uses justify=space-between to spread the rows top/bottom even in
+        small cells.
+        """
+        padding = max(2, int(width * 0.04))
+        icon_name, color = self._get_icon_and_color()
         current_str = _format_temp(self.current_temp, self.temp_unit)
 
-        # Check if we have enough height for 2 rows (2x3, 3x2, 3x3 layouts)
         has_room_for_details = height >= 65
 
         if has_room_for_details:
-            # 2-row layout: icon+temp on top, details below
             icon_size = max(14, min(22, int(height * 0.25)))
-
             top_row = Row(
                 children=[
                     Icon(icon_name, size=icon_size, color=color),
-                    Text(current_str, font="medium", color=THEME_TEXT_PRIMARY),
+                    Text(current_str, font="medium", bold=True, color=color),
                 ],
                 gap=4,
                 align="center",
                 justify="center",
             )
 
-            # Build detail row with target and/or humidity
+            chip_size = 10
             detail_parts: list[Component] = []
-            if self.show_target and self.target_temp is not None:
-                target_str = _format_temp(self.target_temp)
-                detail_parts.append(
-                    Row(
-                        children=[
-                            Icon("target", size=8, color=THEME_TEXT_SECONDARY),
-                            Text(target_str, font="tiny", color=THEME_TEXT_SECONDARY),
-                        ],
-                        gap=2,
-                        align="center",
-                    )
-                )
-            if self.show_humidity and self.humidity is not None:
-                try:
-                    humidity_val = int(float(self.humidity))
-                    detail_parts.append(
-                        Row(
-                            children=[
-                                Icon("water-percent", size=8, color=THEME_INFO),
-                                Text(f"{humidity_val}%", font="tiny", color=THEME_INFO),
-                            ],
-                            gap=2,
-                            align="center",
-                        )
-                    )
-                except (ValueError, TypeError):
-                    pass
+            target_chip = self._target_chip(chip_size, font="tiny")
+            humid_chip = self._humidity_chip(chip_size, font="tiny")
+            if target_chip:
+                detail_parts.append(target_chip)
+            if humid_chip:
+                detail_parts.append(humid_chip)
 
             children: list[Component] = [top_row]
             if detail_parts:
@@ -492,18 +370,17 @@ class ClimateDisplay(Component):
 
             return Column(
                 children=children,
-                gap=2,
                 padding=padding,
-                align="center",
-                justify="center",
+                align="stretch",
+                justify="space-between" if detail_parts else "center",
             )
 
-        # Minimal layout for very small spaces
+        # Minimal layout for very short cells (under 65px height): one row.
         icon_size = max(14, min(24, int(height * 0.35)))
         return Row(
             children=[
                 Icon(icon_name, size=icon_size, color=color),
-                Text(current_str, font="small", color=THEME_TEXT_PRIMARY),
+                Text(current_str, font="small", bold=True, color=color),
             ],
             gap=padding,
             align="center",
