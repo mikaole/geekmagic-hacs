@@ -84,7 +84,10 @@ class ProgressDisplay(Component):
         # - is_compact: extreme tightness — icon+value on one line, bar+% on
         #   the next.
         h_size = get_size_category(height)
-        is_expanded = h_size in (SizeCategory.MEDIUM, SizeCategory.LARGE)
+        # SMALL cells (≥100px high — 2x2 grid territory) get the expanded
+        # 3-row hierarchy too, which is what gives them a hero value and a
+        # caps label rather than the previous flat tiny-text layout.
+        is_expanded = h_size in (SizeCategory.SMALL, SizeCategory.MEDIUM, SizeCategory.LARGE)
         is_compact = h_size == SizeCategory.MICRO
         is_narrow = width < 95
 
@@ -131,15 +134,17 @@ class ProgressDisplay(Component):
                 )
             )
 
-            # Row 2: Value (centered, larger). Auto-fit so long values shrink
-            # rather than overflow the container on narrow widgets.
+            # Row 2: Hero value — bold, tinted with the bar's color, auto-fit
+            # to fill the row. Uses font="huge" so the auto-fit has plenty of
+            # head-room and the value reads as the dominant element of the
+            # cell (the watchOS-style hierarchy: caption / hero / bar).
             value_row = Row(
                 children=[
                     Text(
                         text=value_text,
-                        font="large",
+                        font="huge",
                         bold=True,
-                        color=THEME_TEXT_PRIMARY,
+                        color=self.color,
                         align="center",
                         auto_fit=True,
                     )
