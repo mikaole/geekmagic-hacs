@@ -303,11 +303,8 @@ _FORBIDDEN_COLOR_TOKENS: tuple[tuple[str, str], ...] = (
     ("COLOR_YELLOW", "use THEME_WARNING"),
     ("COLOR_BLUE", "use THEME_INFO"),
     ("COLOR_GOLD", "use THEME_WARNING"),
-    ("COLOR_MAGENTA", "use THEME_SECONDARY"),
-    ("COLOR_LAVENDER", "use THEME_SECONDARY"),
     ("COLOR_PURPLE", "use THEME_SECONDARY"),
     ("COLOR_PINK", "use THEME_PRIMARY/SECONDARY"),
-    ("COLOR_BROWN", "use THEME_MUTED"),
 )
 
 
