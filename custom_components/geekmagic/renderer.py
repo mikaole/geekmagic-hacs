@@ -44,6 +44,34 @@ _NUNITO_EXTRABOLD = _FONTS_DIR / "Nunito-ExtraBold.ttf"
 _DEJAVU_REGULAR = _FONTS_DIR / "DejaVuSans.ttf"
 _DEJAVU_BOLD = _FONTS_DIR / "DejaVuSans-Bold.ttf"
 
+# System fallback paths (Linux / macOS / Windows). The macOS entries are
+# (path, ttc-index) tuples.
+_SYS_BOLD: list[Path | str | tuple[str, int]] = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ("/System/Library/Fonts/Helvetica.ttc", 1),
+    "C:/Windows/Fonts/arialbd.ttf",
+]
+_SYS_REGULAR: list[Path | str | tuple[str, int]] = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ("/System/Library/Fonts/Helvetica.ttc", 0),
+    "C:/Windows/Fonts/arial.ttf",
+]
+
+
+def _try_truetype(
+    paths: list[Path | str | tuple[str, int]], size: int
+) -> FreeTypeFont | ImageFont.ImageFont:
+    """Return the first TrueType font that loads from `paths`, else default."""
+    for entry in paths:
+        try:
+            if isinstance(entry, tuple):
+                path, index = entry
+                return ImageFont.truetype(path, size, index=index)
+            return ImageFont.truetype(str(entry), size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
 
 def _load_font(
     size: int, bold: bool = False, rounded: bool = True
@@ -58,63 +86,20 @@ def _load_font(
     Returns:
         Loaded font or default font
     """
+    paths: list[Path | str | tuple[str, int]] = []
     if rounded:
-        if bold:
-            font_paths: list[Path | str | tuple[str, int]] = [
-                _NUNITO_BOLD,
-                _NUNITO_EXTRABOLD,
-                _DEJAVU_BOLD,
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-                ("/System/Library/Fonts/Helvetica.ttc", 1),
-                "C:/Windows/Fonts/arialbd.ttf",
-            ]
-        else:
-            font_paths = [
-                _NUNITO_REGULAR,
-                _DEJAVU_REGULAR,
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                ("/System/Library/Fonts/Helvetica.ttc", 0),
-                "C:/Windows/Fonts/arial.ttf",
-            ]
-    elif bold:
-        font_paths = [
-            _DEJAVU_BOLD,
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            ("/System/Library/Fonts/Helvetica.ttc", 1),
-            "C:/Windows/Fonts/arialbd.ttf",
-        ]
-    else:
-        font_paths = [
-            _DEJAVU_REGULAR,
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            ("/System/Library/Fonts/Helvetica.ttc", 0),
-            "C:/Windows/Fonts/arial.ttf",
-        ]
-
-    for path_entry in font_paths:
-        try:
-            if isinstance(path_entry, tuple):
-                path, index = path_entry
-                return ImageFont.truetype(path, size, index=index)
-            return ImageFont.truetype(str(path_entry), size)
-        except OSError:
-            continue
-
-    return ImageFont.load_default()
+        paths.extend([_NUNITO_BOLD, _NUNITO_EXTRABOLD] if bold else [_NUNITO_REGULAR])
+    paths.append(_DEJAVU_BOLD if bold else _DEJAVU_REGULAR)
+    paths.extend(_SYS_BOLD if bold else _SYS_REGULAR)
+    return _try_truetype(paths, size)
 
 
 def _load_semibold_font(size: int, rounded: bool = True) -> FreeTypeFont | ImageFont.ImageFont:
     """Load Nunito SemiBold (600 weight). Falls back to DejaVu Bold."""
-    if rounded:
-        font_paths: list[Path] = [_NUNITO_SEMIBOLD, _DEJAVU_BOLD]
-    else:
-        font_paths = [_DEJAVU_BOLD]
-    for p in font_paths:
-        try:
-            return ImageFont.truetype(str(p), size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
+    paths: list[Path | str | tuple[str, int]] = (
+        [_NUNITO_SEMIBOLD, _DEJAVU_BOLD] if rounded else [_DEJAVU_BOLD]
+    )
+    return _try_truetype(paths, size)
 
 
 # MDI icon font path

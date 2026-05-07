@@ -163,38 +163,11 @@ class Theme:
 # 0. watchOS — true-black, system colors, no chrome (new default)
 THEME_WATCHOS = Theme(
     name="watchos",
-    primary=SYSTEM_TEAL,
-    secondary=SYSTEM_INDIGO,
-    success=SYSTEM_GREEN,
-    warning=SYSTEM_ORANGE,
-    error=SYSTEM_RED,
-    info=SYSTEM_BLUE,
     muted=(105, 105, 105),
-    background=(0, 0, 0),
     surface=(0, 0, 0),  # No card chrome — widgets float on true black
     surface_variant=(20, 20, 20),
     border=(40, 40, 40),
-    text_primary=(235, 235, 235),
-    text_secondary=(150, 150, 150),
-    text_tertiary=(105, 105, 105),
-    text_on_primary=(0, 0, 0),
-    accent_colors=(
-        SYSTEM_TEAL,
-        SYSTEM_ORANGE,
-        SYSTEM_GREEN,
-        SYSTEM_PURPLE,
-        SYSTEM_PINK,
-        SYSTEM_YELLOW,
-    ),
     corner_radius=12,
-    border_width=0,
-    border_style="none",
-    layout_padding=6,
-    widget_padding=5,
-    gap=6,
-    rounded_font=True,
-    surface_chrome=False,
-    tint_track=True,
     tint_track_opacity=0.20,
 )
 
@@ -202,21 +175,8 @@ THEME_WATCHOS = Theme(
 #    prefer separation between widgets.
 THEME_CLASSIC = Theme(
     name="classic",
-    primary=SYSTEM_TEAL,
-    secondary=SYSTEM_INDIGO,
-    success=SYSTEM_GREEN,
-    warning=SYSTEM_ORANGE,
-    error=SYSTEM_RED,
-    info=SYSTEM_BLUE,
     muted=(105, 105, 105),
-    background=(0, 0, 0),
-    surface=(14, 14, 14),
-    surface_variant=(24, 24, 24),
     border=(45, 45, 45),
-    text_primary=(235, 235, 235),
-    text_secondary=(150, 150, 150),
-    text_tertiary=(105, 105, 105),
-    text_on_primary=(0, 0, 0),
     accent_colors=(
         SYSTEM_TEAL,
         SYSTEM_ORANGE,
@@ -225,13 +185,7 @@ THEME_CLASSIC = Theme(
         SYSTEM_GREEN,
         SYSTEM_YELLOW,
     ),
-    corner_radius=10,
-    border_width=0,
-    border_style="none",
-    rounded_font=True,
     surface_chrome=True,
-    tint_track=True,
-    tint_track_opacity=0.18,
 )
 
 # 2. Minimal — sharp, mono, ice blue
@@ -244,14 +198,11 @@ THEME_MINIMAL = Theme(
     error=(255, 100, 100),
     info=(140, 210, 255),
     muted=(70, 70, 70),
-    background=(0, 0, 0),
     surface=(0, 0, 0),
     surface_variant=(15, 15, 15),
     border=(80, 80, 80),
-    text_primary=(235, 235, 235),
     text_secondary=(140, 140, 140),
     text_tertiary=(90, 90, 90),
-    text_on_primary=(0, 0, 0),
     accent_colors=((140, 210, 255),),
     corner_radius=0,
     border_width=1,
@@ -262,7 +213,6 @@ THEME_MINIMAL = Theme(
     value_bold=False,
     label_weight="light",
     rounded_font=False,
-    surface_chrome=False,
     tint_track=False,
     bar_background=(30, 30, 30),
 )
@@ -284,7 +234,6 @@ THEME_NEON = Theme(
     text_primary=(235, 235, 245),
     text_secondary=(200, 200, 220),
     text_tertiary=(120, 120, 160),
-    text_on_primary=(0, 0, 0),
     accent_colors=(
         (0, 255, 255),
         (255, 0, 255),
@@ -299,13 +248,9 @@ THEME_NEON = Theme(
     # Neon ships card chrome with a 2-px outline, so default layout
     # padding (6) is fine; pull widget_padding lower so rings/arcs
     # have more cell space to breathe inside the chrome.
-    layout_padding=6,
     widget_padding=3,
-    gap=6,
-    rounded_font=True,
     glow_effect=True,
     surface_chrome=True,
-    tint_track=True,
     tint_track_opacity=0.22,
 )
 
@@ -326,7 +271,6 @@ THEME_RETRO = Theme(
     text_primary=(0, 255, 0),
     text_secondary=(0, 180, 0),
     text_tertiary=(0, 110, 0),
-    text_on_primary=(0, 0, 0),
     accent_colors=((0, 255, 0), (255, 180, 0)),
     corner_radius=0,
     border_width=1,
@@ -337,9 +281,6 @@ THEME_RETRO = Theme(
     rounded_font=False,
     scanlines=True,
     invert_bars=True,
-    surface_chrome=False,
-    tint_track=True,
-    tint_track_opacity=0.18,
     bar_background=(0, 40, 0),
 )
 
@@ -370,15 +311,11 @@ THEME_SOFT = Theme(
         (180, 200, 140),
     ),
     corner_radius=14,
-    border_width=0,
-    border_style="none",
     layout_padding=8,
     widget_padding=8,
     gap=8,
     value_bold=False,
-    rounded_font=True,
     surface_chrome=True,
-    tint_track=True,
     tint_track_opacity=0.22,
 )
 
@@ -409,14 +346,7 @@ THEME_LIGHT = Theme(
         (23, 162, 184),
     ),
     corner_radius=12,
-    border_width=0,
-    border_style="none",
-    layout_padding=6,
     widget_padding=6,
-    gap=6,
-    rounded_font=True,
-    surface_chrome=False,
-    tint_track=True,
     tint_track_opacity=0.16,
     bar_background=(232, 232, 238),
 )
@@ -447,12 +377,7 @@ THEME_OCEAN = Theme(
         (255, 200, 87),
         (120, 170, 220),
     ),
-    corner_radius=10,
-    border_width=0,
-    border_style="none",
-    rounded_font=True,
     surface_chrome=True,
-    tint_track=True,
     tint_track_opacity=0.22,
 )
 
@@ -483,11 +408,7 @@ THEME_SUNSET = Theme(
         (255, 180, 120),
     ),
     corner_radius=14,
-    border_width=0,
-    border_style="none",
-    rounded_font=True,
     surface_chrome=True,
-    tint_track=True,
     tint_track_opacity=0.22,
 )
 
@@ -518,11 +439,7 @@ THEME_FOREST = Theme(
         (200, 215, 115),
     ),
     corner_radius=8,
-    border_width=0,
-    border_style="none",
-    rounded_font=True,
     surface_chrome=True,
-    tint_track=True,
     tint_track_opacity=0.20,
 )
 
@@ -553,14 +470,10 @@ THEME_CANDY = Theme(
         (200, 130, 220),
     ),
     corner_radius=18,
-    border_width=0,
-    border_style="none",
     layout_padding=8,
     widget_padding=8,
     gap=8,
-    rounded_font=True,
     surface_chrome=True,
-    tint_track=True,
     tint_track_opacity=0.20,
     bar_background=(255, 220, 235),
 )
