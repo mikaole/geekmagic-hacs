@@ -11,16 +11,7 @@ from .helpers import calculate_percent, format_value_with_unit
 
 if TYPE_CHECKING:
     from ..render_context import RenderContext
-    from .state import EntityState, WidgetState
-
-
-def _resolve_label(config: WidgetConfig, entity: EntityState | None) -> str:
-    """Get label from config or entity friendly_name."""
-    if config.label:
-        return config.label
-    if entity:
-        return entity.friendly_name
-    return ""
+    from .state import WidgetState
 
 
 class GaugeWidget(Widget):
@@ -123,7 +114,7 @@ class GaugeWidget(Widget):
         percent = calculate_percent(value, self.min_value, self.max_value)
 
         # Get label
-        name = _resolve_label(self.config, entity)
+        name = self.config.label or (entity.friendly_name if entity else "")
 
         # Determine color
         threshold_color = self._get_threshold_color(value)
