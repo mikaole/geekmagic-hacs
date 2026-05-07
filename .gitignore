@@ -53,3 +53,6 @@ home-assistant_v2.db
 
 # macOS
 .DS_Store
+
+# Claude Code session state
+.claude/
