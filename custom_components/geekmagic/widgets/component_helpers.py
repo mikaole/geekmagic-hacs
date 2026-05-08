@@ -1,13 +1,22 @@
 """Convenience component factories for common widget patterns.
 
-These functions return pre-built component trees for common layouts,
-reducing boilerplate in widget implementations.
+Each gauge / value helper here is now a thin shim over ``DataCard`` —
+the layout policy lives in one place, and these factories just choose
+the right indicator (``Bar`` / ``VerticalBar`` / ``Ring`` / ``Arc``) and
+the right ``icon_role``.
 
 Example:
-    def render(self, ctx, hass) -> Component:
-        # Pass a theme role sentinel — resolves to the active theme's
-        # primary colour at render time (no hardcoded RGB).
-        return BarGauge(percent=75, value="75%", label="CPU", color=THEME_PRIMARY)
+
+    return BarGauge(percent=75, value="75%", label="CPU", color=THEME_PRIMARY)
+
+is equivalent to:
+
+    return DataCard(
+        caption="CPU",
+        hero="75%",
+        hero_color=THEME_PRIMARY,
+        indicator=Bar(percent=75, color=THEME_PRIMARY),
+    )
 """
 
 from __future__ import annotations
@@ -18,21 +27,13 @@ from typing import TYPE_CHECKING, Literal
 from .components import (
     THEME_TEXT_PRIMARY,
     THEME_TEXT_SECONDARY,
-    Adaptive,
     Arc,
     Bar,
-    Column,
     Component,
-    Flex,
-    Icon,
     Ring,
-    Row,
-    Spacer,
-    Stack,
-    Text,
     VerticalBar,
 )
-from .data_card import DataCard
+from .data_card import DataCard, pick_card_mode
 
 if TYPE_CHECKING:
     from ..render_context import RenderContext
@@ -42,37 +43,13 @@ Color = tuple[int, int, int]
 BarGaugeMode = Literal["auto", "compact", "stacked", "vertical"]
 
 
-def _pick_bar_mode(width: int, height: int) -> BarGaugeMode:
-    """Auto-pick a BarGauge layout based on cell shape.
-
-    - vertical: genuinely tall+narrow cells (height > 1.8x width). The
-      threshold is intentionally generous (1.8 not 1.4) — at lower
-      ratios the vertical bar reads as a chunky block rather than a
-      thermometer, and a horizontal compact bar fills the cell better.
-    - stacked:  square-ish + at least ~100x100 → label/value/bar hero layout
-    - compact:  everything else (wide+short, tiny grids)
-    """
-    if height > width * 1.8:
-        return "vertical"
-    aspect = width / max(height, 1)
-    if 0.7 <= aspect <= 1.5 and min(width, height) >= 100:
-        return "stacked"
-    return "compact"
-
-
 @dataclass
 class BarGauge(Component):
-    """Adaptive bar gauge — picks `compact`, `stacked`, or `vertical` based
-    on cell shape, or honors an explicit mode override.
-
-    - `compact` (default for landscape cells): caps label + value pinned
-      to the top of the cell, thicker tinted bar pinned to the bottom
-      via `justify="space-evenly"`. Fills the cell height.
-    - `stacked` (auto on cells ≥100x100, square-ish): caps label centred
-      top, big bold tinted value centred middle (auto-fit), thick bar
-      bottom — Apple-Watch Modular-Large bar pattern.
-    - `vertical` (auto on tall+narrow cells): a `VerticalBar` on the
-      right ~35% of the cell, value+label stacked on the left.
+    """Adaptive bar gauge — DataCard with a ``Bar`` (or ``VerticalBar``)
+    indicator. Mode is resolved by ``pick_card_mode``: tall+narrow
+    cells get a ``VerticalBar``, square-ish roomy cells get the
+    Modular-Large stacked look, everything else gets the compact
+    horizontal bar.
     """
 
     percent: float
@@ -88,224 +65,31 @@ class BarGauge(Component):
         return (max_width, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        chosen = self.mode if self.mode != "auto" else _pick_bar_mode(width, height)
-        if chosen == "stacked":
-            tree = self._build_stacked()
-        elif chosen == "vertical":
-            tree = self._build_vertical(width)
-        else:
-            tree = self._build_compact()
-        tree.render(ctx, x, y, width, height)
-
-    # ---- mode builders ----
-
-    def _build_compact(self) -> Component:
-        """Header row pinned to top (icon + caps label + value); thicker
-        tinted bar pinned to bottom. Uses justify=space-between so the
-        cell fills regardless of natural content height.
-        """
-        header_children: list[Component | None] = []
-        if self.icon:
-            header_children.append(Icon(self.icon, size=16, color=self.color))
-        header_children.extend(
-            [
-                Text(
-                    self.label.upper(),
-                    font="tiny",
-                    color=THEME_TEXT_SECONDARY,
-                    truncate=True,
-                    auto_fit=True,
-                ),
-                Spacer(),
-                Text(
-                    self.value,
-                    font="medium",
-                    bold=True,
-                    color=THEME_TEXT_PRIMARY,
-                    auto_fit=True,
-                ),
-            ]
-        )
-
-        return Column(
-            gap=5,
-            padding=self.padding,
-            align="stretch",
-            justify="space-evenly",
-            children=[
-                Adaptive(children=[c for c in header_children if c is not None], gap=6),
-                Bar(percent=self.percent, color=self.color, background=self.background),
-            ],
-        )
-
-    def _build_stacked(self) -> Component:
-        """Modular-Large pattern: caps label top, hero value middle (bold,
-        tinted, auto-fit), thick bar at the bottom — three clear bands.
-        """
-        # Bar component natural height is ~15% of available space — that
-        # under-represents what feels right in a hero cell. Pass an
-        # explicit height so the bar reads as substantial.
-        bar = Bar(
-            percent=self.percent,
-            color=self.color,
-            background=self.background,
-        )
-        return Column(
-            gap=4,
-            padding=self.padding,
-            align="stretch",
-            justify="space-evenly",
-            children=[
-                Row(
-                    children=[
-                        Text(
-                            self.label.upper(),
-                            font="tiny",
-                            color=THEME_TEXT_SECONDARY,
-                            truncate=True,
-                        )
-                    ],
-                    justify="center",
-                    align="center",
-                ),
-                Row(
-                    children=[
-                        Text(
-                            self.value,
-                            font="huge",
-                            bold=True,
-                            color=self.color,
-                            auto_fit=True,
-                        )
-                    ],
-                    justify="center",
-                    align="center",
-                ),
-                bar,
-            ],
-        )
-
-    def _build_vertical(self, width: int) -> Component:
-        """Tall+narrow cells: thermometer / level-meter look.
-
-        Two flavours, picked by cell width:
-          - very narrow (<90 px, e.g. 3-column layout): stack everything
-            vertically — value on top, caps label below, bar fills the
-            rest at full cell width. Side-by-side compresses the bar
-            into a sliver and crowds the text.
-          - wider verticals: value+label column on the left, vertical
-            bar on the right.
-        """
-        if width < 90:
-            return Column(
-                gap=4,
-                padding=self.padding,
-                align="stretch",
-                justify="start",
-                children=[
-                    Row(
-                        children=[
-                            Text(
-                                self.value,
-                                font="medium",
-                                bold=True,
-                                color=self.color,
-                                auto_fit=True,
-                            )
-                        ],
-                        justify="center",
-                        align="center",
-                    ),
-                    Row(
-                        children=[
-                            Text(
-                                self.label.upper(),
-                                font="tiny",
-                                color=THEME_TEXT_SECONDARY,
-                                truncate=True,
-                                auto_fit=True,
-                            )
-                        ],
-                        justify="center",
-                        align="center",
-                    ),
-                    # Flex makes the bar swallow the remaining vertical
-                    # space; with align="stretch" above it gets the full
-                    # cell width, so the gauge is substantial.
-                    Flex(
-                        VerticalBar(
-                            percent=self.percent,
-                            color=self.color,
-                            background=self.background,
-                            # Allow the bar to use almost the entire cell
-                            # width — it's the dominant visual element.
-                            width=max(20, int(width * 0.6)),
-                        )
-                    ),
-                ],
+        # Pick the indicator first so DataCard's auto-mode can promote
+        # tall+narrow cells to vertical (which needs a VerticalBar).
+        if self.mode == "vertical" or (
+            self.mode == "auto"
+            and pick_card_mode(width, height) == "compact"
+            and height > width * 1.8
+        ):
+            indicator: Component = VerticalBar(
+                percent=self.percent, color=self.color, background=self.background
             )
-
-        # Wider verticals: side-by-side text column + bar.
-        left = Column(
-            gap=2,
-            padding=2,
-            align="center",
-            justify="center",
-            children=[
-                Text(
-                    self.value,
-                    font="medium",
-                    bold=True,
-                    color=self.color,
-                    auto_fit=True,
-                ),
-                Text(
-                    self.label.upper(),
-                    font="tiny",
-                    color=THEME_TEXT_SECONDARY,
-                    truncate=True,
-                    auto_fit=True,
-                ),
-            ],
-        )
-        return Row(
-            gap=8,
-            padding=self.padding,
-            align="stretch",
-            justify="start",
-            children=[
-                left,
-                VerticalBar(
-                    percent=self.percent,
-                    color=self.color,
-                    background=self.background,
-                ),
-            ],
-        )
-
-
-def _ring_label_outside_threshold(width: int, height: int) -> bool:
-    """Return True when the cell is roomy enough to show the label
-    *outside* the ring (its own band on top), not inside it.
-
-    Putting the label outside avoids the in-ring overlap that happens
-    when the ring fills the cell. The 100-px threshold covers 2x2 grid
-    cells (~111x111 with default padding), which is exactly where the
-    overlap was visible in the neon theme sample.
-    """
-    return width >= 100 and height >= 100
+        else:
+            indicator = Bar(percent=self.percent, color=self.color, background=self.background)
+        DataCard(
+            caption=self.label,
+            icon=self.icon,
+            icon_color=self.color,
+            hero=self.value,
+            hero_color=self.color,  # Activity-bar style: hero matches the bar tint
+            indicator=indicator,
+        ).render(ctx, x, y, width, height)
 
 
 @dataclass
 class RingGauge(Component):
-    """Adaptive ring gauge.
-
-    - In cells >= 120x120: caps label gets its own row above the ring
-      (clear of the ring stroke); ring fills the rest, value bold-tinted
-      in the centre. Solves the label-overlapping-the-ring issue.
-    - In smaller cells: label stays inside the ring with the value
-      (more compact, label is a tiny caption below the value).
-    """
+    """Adaptive ring gauge — DataCard with a ``Ring`` indicator (mode="ring")."""
 
     percent: float
     value: str
@@ -317,95 +101,17 @@ class RingGauge(Component):
         return (max_width, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        if _ring_label_outside_threshold(width, height):
-            tree = self._build_label_outside()
-        else:
-            tree = self._build_label_inside()
-        tree.render(ctx, x, y, width, height)
-
-    def _build_label_inside(self) -> Component:
-        """Compact: ring fills the cell, value+label centred inside."""
-        return Stack(
-            children=[
-                Ring(percent=self.percent, color=self.color, background=self.background),
-                Column(
-                    align="center",
-                    justify="center",
-                    gap=2,
-                    children=[
-                        # font="large" (~24px) comfortably fits inside the
-                        # ring's inner clear space; bold + tint give the
-                        # watchOS look.
-                        Text(self.value, font="large", bold=True, color=self.color),
-                        Text(
-                            self.label.upper(),
-                            font="tiny",
-                            color=THEME_TEXT_SECONDARY,
-                            truncate=True,
-                            auto_fit=True,
-                        ),
-                    ],
-                ),
-            ],
-        )
-
-    def _build_label_outside(self) -> Component:
-        """Roomy: label gets its own row above the ring; value inside ring."""
-        return Column(
-            gap=2,
-            padding=4,
-            align="stretch",
-            justify="space-evenly",
-            children=[
-                Row(
-                    children=[
-                        Text(
-                            self.label.upper(),
-                            font="tiny",
-                            color=THEME_TEXT_SECONDARY,
-                            truncate=True,
-                        )
-                    ],
-                    justify="center",
-                    align="center",
-                ),
-                # The remaining space is taken by the Stack via Flex so the
-                # ring grows to fill what's left after the label band.
-                Flex(
-                    Stack(
-                        children=[
-                            Ring(
-                                percent=self.percent,
-                                color=self.color,
-                                background=self.background,
-                            ),
-                            Column(
-                                align="center",
-                                justify="center",
-                                children=[
-                                    Text(
-                                        self.value,
-                                        font="xlarge",
-                                        bold=True,
-                                        color=self.color,
-                                        auto_fit=True,
-                                    ),
-                                ],
-                            ),
-                        ],
-                    )
-                ),
-            ],
-        )
+        DataCard(
+            caption=self.label,
+            hero=self.value,
+            hero_color=self.color,
+            indicator=Ring(percent=self.percent, color=self.color, background=self.background),
+        ).render(ctx, x, y, width, height)
 
 
 @dataclass
 class ArcGauge(Component):
-    """Adaptive arc gauge (270 degrees).
-
-    - Cells >= 120x120: caps label above arc, arc in middle, value below.
-    - Smaller cells: tight stack with label in top padding, value below.
-    """
+    """Adaptive arc gauge — DataCard with an ``Arc`` indicator (mode="ring")."""
 
     percent: float
     value: str
@@ -417,111 +123,12 @@ class ArcGauge(Component):
         return (max_width, max_height)
 
     def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        if _ring_label_outside_threshold(width, height):
-            tree = self._build_label_outside()
-        else:
-            tree = self._build_compact()
-        tree.render(ctx, x, y, width, height)
-
-    def _build_compact(self) -> Component:
-        """Compact ArcGauge: caps label at top, arc with value inside below.
-
-        Column-based (not Stack) so the label band can't overlap the arc stroke.
-        """
-        return Column(
-            gap=2,
-            padding=4,
-            align="stretch",
-            justify="space-evenly",
-            children=[
-                # Label band (caption tier).
-                Row(
-                    children=[
-                        Text(self.label.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
-                    ],
-                    justify="center",
-                    align="center",
-                ),
-                # Arc + value in the remaining space. Flex gives this
-                # Stack the leftover height; the arc auto-sizes to fit
-                # and the value stays centred inside.
-                Flex(
-                    Stack(
-                        children=[
-                            Arc(
-                                percent=self.percent,
-                                color=self.color,
-                                background=self.background,
-                            ),
-                            Column(
-                                align="center",
-                                justify="center",
-                                children=[
-                                    Text(
-                                        self.value,
-                                        font="medium",
-                                        bold=True,
-                                        color=self.color,
-                                    ),
-                                ],
-                            ),
-                        ],
-                    )
-                ),
-            ],
-        )
-
-    def _build_label_outside(self) -> Component:
-        return Column(
-            gap=2,
-            padding=4,
-            align="stretch",
-            justify="start",
-            children=[
-                Row(
-                    children=[
-                        Text(
-                            self.label.upper(),
-                            font="tiny",
-                            color=THEME_TEXT_SECONDARY,
-                            truncate=True,
-                        )
-                    ],
-                    justify="center",
-                    align="center",
-                ),
-                Flex(
-                    Stack(
-                        children=[
-                            Column(
-                                align="center",
-                                justify="center",
-                                padding=8,
-                                children=[
-                                    Arc(
-                                        percent=self.percent,
-                                        color=self.color,
-                                        background=self.background,
-                                    ),
-                                ],
-                            ),
-                            Column(
-                                align="center",
-                                justify="center",
-                                children=[
-                                    Text(
-                                        self.value,
-                                        font="large",
-                                        bold=True,
-                                        color=self.color,
-                                    ),
-                                ],
-                            ),
-                        ],
-                    )
-                ),
-            ],
-        )
+        DataCard(
+            caption=self.label,
+            hero=self.value,
+            hero_color=self.color,
+            indicator=Arc(percent=self.percent, color=self.color, background=self.background),
+        ).render(ctx, x, y, width, height)
 
 
 def IconValue(
@@ -533,18 +140,7 @@ def IconValue(
     label_color: Color = THEME_TEXT_SECONDARY,
     icon_size: int | None = None,
 ) -> Component:
-    """Icon with value and label — backed by ``DataCard``.
-
-    Equivalent to ``DataCard(caption=label, icon=icon,
-    icon_role="feature", hero=value)`` — preserves the original
-    icon-on-top, value-middle, label-below ``IconValueDisplay`` look
-    while inheriting the new shared layout policy.
-
-    ``label_color`` is honoured by the underlying caption Text via
-    its theme sentinel default; passing a different value works but
-    won't change which sentinel resolves at render time.
-    """
-    _ = label_color  # kept for API compat; caption uses theme secondary
+    """Icon with value and label — backed by ``DataCard``."""
     return DataCard(
         caption=label or None,
         icon=icon,
@@ -563,12 +159,7 @@ def CenteredValue(
     value_font: str = "large",
     label_font: str = "small",
 ) -> Component:
-    """Centered value with optional label — backed by ``DataCard``.
-
-    Equivalent to ``DataCard(caption=label, hero=value)`` —
-    auto-fits the hero font instead of the legacy fixed-size choice
-    in ``value_font``.
-    """
+    """Centered value with optional label — backed by ``DataCard``."""
     return DataCard(
         caption=label,
         hero=value,
