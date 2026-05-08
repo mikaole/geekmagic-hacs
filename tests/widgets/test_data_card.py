@@ -71,9 +71,11 @@ class TestPickCardMode:
         assert pick_card_mode(80, 240, bar) == "vertical"
 
     def test_vertical_threshold_is_strict(self) -> None:
-        # height > width x 1.8 — exactly 1.8 is NOT vertical.
+        # height > width x 1.8 — exactly 1.8 isn't vertical (strict gt).
+        # At the boundary the cell falls into stacked (long_side <=
+        # short_side * 1.8 mirror-symmetric), past it into vertical.
         bar = VerticalBar(percent=50, color=THEME_PRIMARY)
-        assert pick_card_mode(100, 180, bar) == "compact"
+        assert pick_card_mode(100, 180, bar) == "stacked"
         assert pick_card_mode(100, 181, bar) == "vertical"
 
     def test_ring_indicator_forces_ring_mode(self) -> None:

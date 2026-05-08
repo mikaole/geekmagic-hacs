@@ -109,20 +109,25 @@ def cell_metrics(width: int, height: int) -> CellMetrics:
 def pick_card_mode(width: int, height: int, indicator: Component | None = None) -> CardMode:
     """Pick a layout mode for the given cell shape and indicator.
 
-    Thresholds match ``component_helpers._pick_bar_mode`` (already
-    validated against the gauges dashboard samples) plus two
-    indicator-aware overrides:
-      - ``Ring`` / ``Arc`` indicator → ``ring`` mode (label above,
-        value inside the ring).
-      - ``VerticalBar`` indicator on a tall+narrow cell → ``vertical``
-        mode (thermometer / level-meter look).
+    The stacked threshold is mirror-symmetric with vertical: any cell
+    where the long side is at most 1.8x the short side and the short
+    side is at least 100 px gets the watchOS three-band stacked
+    treatment. This pulls in shapes like 240x156 (HeroLayout
+    upper region) and 240x130 that the previous 1.5 cap pushed into
+    compact mode and rendered with a too-small hero.
+
+    - ``Ring`` / ``Arc`` indicator -> ``ring`` mode (label above,
+      value inside the ring).
+    - ``VerticalBar`` indicator on a tall+narrow cell -> ``vertical``
+      mode (thermometer / level-meter look).
     """
     if isinstance(indicator, (Ring, Arc)):
         return "ring"
     if isinstance(indicator, VerticalBar) and height > width * 1.8:
         return "vertical"
-    aspect = width / max(height, 1)
-    if 0.7 <= aspect <= 1.5 and min(width, height) >= 100:
+    long_side = max(width, height)
+    short_side = min(width, height)
+    if short_side >= 100 and long_side <= short_side * 1.8:
         return "stacked"
     return "compact"
 
@@ -219,7 +224,10 @@ class DataCard(Component):
     # Mode builders
     # ------------------------------------------------------------------
 
-    def _hero_text(self, font: str = "huge") -> Component:
+    def _hero_text(self, font: str = "primary") -> Component:
+        # ``font="primary"`` starts the auto-fit chain at the largest
+        # semantic size (35% of container height) rather than "huge",
+        # so hero values fill roomy cells the way watchOS does.
         return Text(
             self.hero,
             font=font,
