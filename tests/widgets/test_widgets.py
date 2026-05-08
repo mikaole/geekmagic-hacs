@@ -37,24 +37,16 @@ from custom_components.geekmagic.widgets.weather import WeatherWidget
 def find_value_text(comp: Any) -> str | None:
     """Pull the hero/value string out of an entity/status/text widget tree.
 
-    Several tests assert that the rendered value is "Open"/"Closed" /
-    title-cased / etc. They previously walked an ``IconValueDisplay`` or
-    ``CenteredValue`` Column tree; after the ``DataCard`` migration the
-    hero lives on ``DataCard.hero``. This helper recognises both shapes
-    so the assertions don't care which primitive backs the widget.
+    Most card-style widgets now return a ``DataCard``; this helper
+    short-circuits on its ``hero`` field. The ``Panel`` / ``Column`` /
+    ``Text`` fallbacks remain for widgets that are wrapped or are
+    constructed directly in tests.
     """
-    from custom_components.geekmagic.widgets.components import (
-        Column,
-        IconValueDisplay,
-        Panel,
-        Text,
-    )
+    from custom_components.geekmagic.widgets.components import Column, Panel, Text
     from custom_components.geekmagic.widgets.data_card import DataCard
 
     if isinstance(comp, DataCard):
         return comp.hero
-    if isinstance(comp, IconValueDisplay):
-        return comp.value
     if isinstance(comp, Text):
         return comp.text
     if isinstance(comp, Panel) and comp.child:
@@ -515,9 +507,7 @@ class TestEntityWidget:
         state = _build_widget_state(hass, "binary_sensor.front_door")
         component = widget.render(ctx, state)
 
-        # Check that the component tree contains "Open" text
-        # The component is either a Column (CenteredValue) or IconValueDisplay
-
+        # Check that the component tree contains "Open" text.
         value = find_value_text(component)
         assert value == "Open", f"Expected 'Open' but got '{value}'"
 

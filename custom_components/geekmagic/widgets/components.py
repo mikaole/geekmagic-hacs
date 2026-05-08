@@ -723,97 +723,6 @@ class Center(Component):
         self.child.render(ctx, cx, cy, cw, ch)
 
 
-@dataclass
-class IconValueDisplay(Component):
-    """Icon with value and label - handles layout internally for proper sizing.
-
-    Vertical layout: Icon at top, value in middle (fills space), label at bottom.
-    All sizing is computed together to ensure proper proportions.
-    """
-
-    icon: str
-    value: str
-    label: str
-    icon_color: tuple[int, int, int] = THEME_TEXT_PRIMARY
-    value_color: tuple[int, int, int] = THEME_TEXT_PRIMARY
-    label_color: tuple[int, int, int] = THEME_TEXT_SECONDARY
-    icon_size: int | None = None
-
-    def measure(self, ctx: RenderContext, max_width: int, max_height: int) -> tuple[int, int]:
-        return (max_width, max_height)
-
-    def render(self, ctx: RenderContext, x: int, y: int, width: int, height: int) -> None:
-        """Render icon, value, and label with proper proportions."""
-        padding = int(width * 0.06)
-        inner_width = width - padding * 2
-        inner_height = height - padding * 2
-
-        # Resolve theme-aware colors
-        icon_color = _resolve_color(self.icon_color, ctx)
-        value_color = _resolve_color(self.value_color, ctx)
-        label_color = _resolve_color(self.label_color, ctx)
-
-        # Calculate sizes based on container. Scale icon by the smaller
-        # dimension so a tall narrow cell (e.g. 70x240 sidebar slot)
-        # doesn't get a 48-px icon that dominates the 70-px width — pick
-        # min(width, height) as the reference and stay under ~40% of
-        # the cell width either way.
-        scale_dim = min(inner_width, inner_height)
-        icon_size = self.icon_size or max(
-            16, min(48, int(scale_dim * 0.30), int(inner_width * 0.40))
-        )
-        label_height = int(inner_height * 0.15)
-        value_height = inner_height - icon_size - label_height - 12  # gaps
-
-        # Vertical positions (centered)
-        total_content = icon_size + value_height + label_height + 12
-        start_y = y + padding + (inner_height - total_content) // 2
-
-        center_x = x + width // 2
-        current_y = start_y
-
-        # Draw icon at top
-        ctx.draw_icon(
-            self.icon,
-            (center_x - icon_size // 2, current_y),
-            size=icon_size,
-            color=icon_color,
-        )
-        current_y += icon_size + 6
-
-        # Draw value (fills available space)
-        value_font = ctx.fit_text(
-            self.value,
-            max_width=int(inner_width * 0.95),
-            max_height=int(value_height * 0.90),
-            bold=True,
-        )
-        ctx.draw_text(
-            self.value,
-            (center_x, current_y + value_height // 2),
-            font=value_font,
-            color=value_color,
-            anchor="mm",
-        )
-        current_y += value_height + 6
-
-        # fit_text guarantees no truncation across cell sizes from 70..240px wide.
-        label_text = self.label.upper()
-        label_font = ctx.fit_text(
-            label_text,
-            max_width=int(inner_width * 0.92),
-            max_height=int(label_height * 0.90),
-            bold=False,
-        )
-        ctx.draw_text(
-            label_text,
-            (center_x, current_y + label_height // 2),
-            font=label_font,
-            color=label_color,
-            anchor="mm",
-        )
-
-
 # ============================================================================
 # Export all components
 # ============================================================================
@@ -839,7 +748,6 @@ __all__ = [
     "Component",
     "Flex",
     "Icon",
-    "IconValueDisplay",
     "Justify",
     "Panel",
     "Ring",

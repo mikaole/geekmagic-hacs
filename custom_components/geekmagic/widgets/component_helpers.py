@@ -25,7 +25,6 @@ from .components import (
     Component,
     Flex,
     Icon,
-    IconValueDisplay,
     Ring,
     Row,
     Spacer,
@@ -33,6 +32,7 @@ from .components import (
     Text,
     VerticalBar,
 )
+from .data_card import DataCard
 
 if TYPE_CHECKING:
     from ..render_context import RenderContext
@@ -533,28 +533,25 @@ def IconValue(
     label_color: Color = THEME_TEXT_SECONDARY,
     icon_size: int | None = None,
 ) -> Component:
-    """Icon with value and label - uses IconValueDisplay for proper sizing.
+    """Icon with value and label — backed by ``DataCard``.
 
-    Args:
-        icon: Icon name
-        value: Display value
-        label: Label text
-        color: Icon color
-        value_color: Value text color
-        label_color: Label text color
-        icon_size: Optional fixed icon size
+    Equivalent to ``DataCard(caption=label, icon=icon,
+    icon_role="feature", hero=value)`` — preserves the original
+    icon-on-top, value-middle, label-below ``IconValueDisplay`` look
+    while inheriting the new shared layout policy.
 
-    Returns:
-        IconValueDisplay component
+    ``label_color`` is honoured by the underlying caption Text via
+    its theme sentinel default; passing a different value works but
+    won't change which sentinel resolves at render time.
     """
-    return IconValueDisplay(
+    _ = label_color  # kept for API compat; caption uses theme secondary
+    return DataCard(
+        caption=label or None,
         icon=icon,
-        value=value,
-        label=label,
         icon_color=color,
-        value_color=value_color,
-        label_color=label_color,
-        icon_size=icon_size,
+        icon_role="feature",
+        hero=value,
+        hero_color=value_color,
     )
 
 
@@ -566,30 +563,16 @@ def CenteredValue(
     value_font: str = "large",
     label_font: str = "small",
 ) -> Component:
-    """Centered value with optional label below.
+    """Centered value with optional label — backed by ``DataCard``.
 
-    Args:
-        value: Display value
-        label: Optional label text
-        value_color: Value text color
-        label_color: Label text color
-        value_font: Font size for value
-        label_font: Font size for label
-
-    Returns:
-        Component tree
+    Equivalent to ``DataCard(caption=label, hero=value)`` —
+    auto-fits the hero font instead of the legacy fixed-size choice
+    in ``value_font``.
     """
-    children: list[Component] = [
-        Text(value, font=value_font, color=value_color),
-    ]
-    if label:
-        children.append(Text(label.upper(), font=label_font, color=label_color))
-
-    return Column(
-        align="center",
-        justify="center",
-        gap=8,
-        children=children,
+    return DataCard(
+        caption=label,
+        hero=value,
+        hero_color=value_color,
     )
 
 

@@ -115,6 +115,10 @@ class EntityWidget(Widget):
             caption=name if self.show_name else None,
             icon=icon,
             icon_color=self.config.color or ctx.theme.get_accent_color(self.config.slot),
+            # Promote the icon to its own band (was IconValueDisplay's
+            # default look). The entity icon is the cell's primary
+            # visual identifier — chip size loses the read.
+            icon_role="feature",
             hero=value_text,
         )
         return Panel(child=card) if self.show_panel else card

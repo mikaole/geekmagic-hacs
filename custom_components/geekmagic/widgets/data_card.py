@@ -183,6 +183,12 @@ class DataCard(Component):
     caption: str | None = None
     icon: str | None = None
     icon_color: Color = THEME_PRIMARY
+    # ``"chip"`` keeps the icon inline beside the caption (small,
+    # decorative). ``"feature"`` promotes it to its own band above
+    # the caption — bigger, the way ``IconValueDisplay`` rendered
+    # entity icons. Pick "feature" when the icon is the widget's
+    # main visual identifier (entity, gauge), "chip" otherwise.
+    icon_role: Literal["chip", "feature"] = "chip"
     hero: str = ""
     hero_color: Color = THEME_TEXT_PRIMARY
     supporting: list[Chip] = field(default_factory=list)
@@ -245,10 +251,27 @@ class DataCard(Component):
         )
 
     def _build_stacked(self, metrics: CellMetrics, pad: int) -> Component:
-        """Three watchOS bands — caption / hero / (supporting + indicator)."""
+        """Three watchOS bands — caption / hero / (supporting + indicator).
+
+        With ``icon_role="feature"`` and an icon set, the icon gets
+        its own band on top — the ``IconValueDisplay`` look that
+        entity / gauge widgets relied on.
+        """
         bands: list[Component] = []
-        # Caption band — only shown when there's something to put in it.
-        if self.caption or self.icon:
+        feature_icon = self.icon_role == "feature" and self.icon is not None
+        if feature_icon:
+            assert self.icon is not None  # ty narrow
+            bands.append(
+                Row(
+                    children=[Icon(self.icon, size=metrics.icon_size, color=self.icon_color)],
+                    justify="center",
+                    align="center",
+                )
+            )
+            if self.caption:
+                bands.append(Row(children=[self._caption_text()], justify="center", align="center"))
+        elif self.caption or self.icon:
+            # chip role: icon and caption share one row.
             caption_children: list[Component] = []
             if self.icon:
                 caption_children.append(
@@ -280,11 +303,10 @@ class DataCard(Component):
         bottom. The header uses ``Adaptive`` so it stacks vertically when too
         narrow to lay out horizontally.
         """
+        icon_px = metrics.icon_size if self.icon_role == "feature" else metrics.chip_icon_size
         header_children: list[Component] = []
         if self.icon:
-            header_children.append(
-                Icon(self.icon, size=metrics.chip_icon_size, color=self.icon_color)
-            )
+            header_children.append(Icon(self.icon, size=icon_px, color=self.icon_color))
         if self.caption:
             header_children.append(self._caption_text())
         if self.hero:
