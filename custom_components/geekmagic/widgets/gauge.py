@@ -43,7 +43,9 @@ class GaugeWidget(Widget):
             {"key": "min", "type": "number", "label": "Minimum", "default": 0},
             {"key": "max", "type": "number", "label": "Maximum", "default": 100},
             {"key": "unit", "type": "text", "label": "Unit Override"},
+            {"key": "show_name", "type": "boolean", "label": "Show Name", "default": True},
             {"key": "show_value", "type": "boolean", "label": "Show Value", "default": True},
+            {"key": "show_unit", "type": "boolean", "label": "Show Unit", "default": True},
             {"key": "icon", "type": "icon", "label": "Icon"},
             {"key": "attribute", "type": "text", "label": "Entity Attribute"},
             {"key": "color_thresholds", "type": "thresholds", "label": "Color Thresholds"},
@@ -59,7 +61,9 @@ class GaugeWidget(Widget):
         self.min_value = config.options.get("min", 0)
         self.max_value = config.options.get("max", 100)
         self.icon = config.options.get("icon")
+        self.show_name = config.options.get("show_name", True)
         self.show_value = config.options.get("show_value", True)
+        self.show_unit = config.options.get("show_unit", True)
         self.unit = config.options.get("unit", "")
         # Attribute to read value from
         self.attribute = config.options.get("attribute")
@@ -105,16 +109,24 @@ class GaugeWidget(Widget):
         value = entity.numeric(self.attribute) if entity is not None else 0.0
         display_value = f"{value:.0f}" if entity is not None else "--"
 
-        # Get unit from entity if not configured
-        unit = self.unit
-        if not unit and entity is not None:
-            unit = entity.unit or ""
+        # Get unit from entity if not configured. Suppressed when show_unit=False.
+        unit = ""
+        if self.show_unit:
+            unit = self.unit
+            if not unit and entity is not None:
+                unit = entity.unit or ""
 
         # Calculate percentage
         percent = calculate_percent(value, self.min_value, self.max_value)
 
-        # Get label
-        name = self.label_for(entity)
+        # Resolve label. show_name=False hides the friendly_name fallback;
+        # an explicit config.label is always honoured.
+        if self.config.label:
+            name: str | None = self.config.label
+        elif self.show_name:
+            name = self.label_for(entity)
+        else:
+            name = None
 
         # Determine color
         threshold_color = self._get_threshold_color(value)

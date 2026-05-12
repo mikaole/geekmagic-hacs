@@ -54,7 +54,7 @@ class BarGauge(Component):
 
     percent: float
     value: str
-    label: str
+    label: str | None
     color: Color
     icon: str | None = None
     background: Color | None = None  # None = theme tinted track
@@ -94,7 +94,7 @@ class RingGauge(Component):
 
     percent: float
     value: str
-    label: str
+    label: str | None
     color: Color
     background: Color | None = None  # None = theme tinted track
 
@@ -116,7 +116,7 @@ class ArcGauge(Component):
 
     percent: float
     value: str
-    label: str
+    label: str | None
     color: Color
     background: Color | None = None  # None = theme tinted track
 

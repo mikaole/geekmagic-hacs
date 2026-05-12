@@ -18,6 +18,11 @@ from custom_components.geekmagic.widgets.base import WidgetConfig
 from custom_components.geekmagic.widgets.chart import ChartWidget
 from custom_components.geekmagic.widgets.climate import ClimateWidget
 from custom_components.geekmagic.widgets.clock import ClockWidget
+from custom_components.geekmagic.widgets.component_helpers import (
+    ArcGauge,
+    BarGauge,
+    RingGauge,
+)
 from custom_components.geekmagic.widgets.entity import EntityWidget
 from custom_components.geekmagic.widgets.gauge import GaugeWidget
 from custom_components.geekmagic.widgets.helpers import (
@@ -863,6 +868,8 @@ class TestGaugeWidget:
         assert widget.min_value == 0
         assert widget.max_value == 100
         assert widget.show_value is True
+        assert widget.show_name is True
+        assert widget.show_unit is True
 
     def test_init_with_options(self):
         """Test gauge widget with custom options."""
@@ -939,6 +946,154 @@ class TestGaugeWidget:
         state = _build_widget_state()
         widget.render(ctx, state)
         assert img.size == (480, 480)
+
+    def test_show_name_true_uses_friendly_name(self, renderer, canvas, rect, hass):
+        """Default show_name=True falls back to friendly_name as the label."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set(
+            "sensor.cpu",
+            "75",
+            {"friendly_name": "CPU", "unit_of_measurement": "%"},
+        )
+        config = WidgetConfig(widget_type="gauge", slot=0, entity_id="sensor.cpu")
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, BarGauge)
+        assert component.label == "CPU"
+
+    def test_show_name_false_hides_friendly_name(self, renderer, canvas, rect, hass):
+        """show_name=False with no explicit label suppresses the caption entirely."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set(
+            "sensor.cpu",
+            "75",
+            {"friendly_name": "CPU", "unit_of_measurement": "%"},
+        )
+        config = WidgetConfig(
+            widget_type="gauge",
+            slot=0,
+            entity_id="sensor.cpu",
+            options={"show_name": False},
+        )
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, BarGauge)
+        assert component.label is None
+
+    def test_show_name_false_keeps_explicit_label(self, renderer, canvas, rect, hass):
+        """An explicit config.label is honoured even when show_name=False."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set(
+            "sensor.cpu",
+            "75",
+            {"friendly_name": "CPU", "unit_of_measurement": "%"},
+        )
+        config = WidgetConfig(
+            widget_type="gauge",
+            slot=0,
+            entity_id="sensor.cpu",
+            label="Load",
+            options={"show_name": False},
+        )
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, BarGauge)
+        assert component.label == "Load"
+
+    def test_show_unit_true_includes_unit(self, renderer, canvas, rect, hass):
+        """Default show_unit=True formats the value with the entity's unit."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set(
+            "sensor.cpu",
+            "75",
+            {"friendly_name": "CPU", "unit_of_measurement": "%"},
+        )
+        config = WidgetConfig(widget_type="gauge", slot=0, entity_id="sensor.cpu")
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, BarGauge)
+        assert "%" in component.value
+
+    def test_show_unit_false_strips_unit(self, renderer, canvas, rect, hass):
+        """show_unit=False removes the unit from the formatted value."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set(
+            "sensor.cpu",
+            "75",
+            {"friendly_name": "CPU", "unit_of_measurement": "%"},
+        )
+        config = WidgetConfig(
+            widget_type="gauge",
+            slot=0,
+            entity_id="sensor.cpu",
+            options={"show_unit": False},
+        )
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, BarGauge)
+        assert "%" not in component.value
+        assert component.value == "75"
+
+    def test_show_unit_false_overrides_unit_override(self, renderer, canvas, rect, hass):
+        """show_unit=False also suppresses the manual `unit` override."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set("sensor.cpu", "75", {"friendly_name": "CPU"})
+        config = WidgetConfig(
+            widget_type="gauge",
+            slot=0,
+            entity_id="sensor.cpu",
+            options={"show_unit": False, "unit": "%"},
+        )
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, BarGauge)
+        assert "%" not in component.value
+
+    def test_schema_exposes_show_name_and_show_unit(self):
+        """Frontend schema mirrors the Entity widget — show_name/show_unit booleans."""
+        keys = {opt["key"]: opt for opt in GaugeWidget.SCHEMA["options"]}
+        assert keys["show_name"]["type"] == "boolean"
+        assert keys["show_name"]["default"] is True
+        assert keys["show_unit"]["type"] == "boolean"
+        assert keys["show_unit"]["default"] is True
+
+    def test_show_name_false_on_ring_style(self, renderer, canvas, rect, hass):
+        """show_name=False also suppresses the caption for ring gauges."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set("sensor.cpu", "50", {"friendly_name": "CPU"})
+        config = WidgetConfig(
+            widget_type="gauge",
+            slot=0,
+            entity_id="sensor.cpu",
+            options={"style": "ring", "show_name": False},
+        )
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, RingGauge)
+        assert component.label is None
+
+    def test_show_name_false_on_arc_style(self, renderer, canvas, rect, hass):
+        """show_name=False also suppresses the caption for arc gauges."""
+        _img, draw = canvas
+        ctx = RenderContext(draw, rect, renderer)
+        hass.states.async_set("sensor.cpu", "25", {"friendly_name": "CPU"})
+        config = WidgetConfig(
+            widget_type="gauge",
+            slot=0,
+            entity_id="sensor.cpu",
+            options={"style": "arc", "show_name": False},
+        )
+        widget = GaugeWidget(config)
+        component = widget.render(ctx, _build_widget_state(hass, "sensor.cpu"))
+        assert isinstance(component, ArcGauge)
+        assert component.label is None
 
 
 class TestProgressWidget:
