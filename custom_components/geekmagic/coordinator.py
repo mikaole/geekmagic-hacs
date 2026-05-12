@@ -1279,16 +1279,33 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         await self.async_request_refresh()
 
     async def _async_fetch_camera_images(self) -> None:
-        """Pre-fetch camera images for all camera widgets.
+        """Pre-fetch images for all camera/image-entity widgets.
 
-        This must be called from the async context before rendering,
-        since camera.async_get_image() is async.
+        Branches per source domain so each goes through its native API:
+
+        - `camera.*` → `camera.async_get_image()` (handles auth/snapshot).
+        - `image.*`  → HTTP fetch of `entity_picture` with an
+          `image_last_updated`-derived cache-bust query (Frigate's
+          `image.front_camera_person` and similar HA image entities).
+        - Anything else with an `entity_picture` attribute (e.g. URL
+          strings used by the notification service) → plain HTTP fetch.
+
+        Must be called from the async context before rendering.
         """
         from homeassistant.components.camera import async_get_image
 
-        # Find all camera/image widgets in current layout
+        # Collect entity IDs per source type from the active layout.
         camera_entity_ids: set[str] = set()
+        image_entity_ids: set[str] = set()
         other_entity_ids: set[str] = set()
+
+        def _classify(entity_id: str) -> None:
+            if entity_id.startswith("camera."):
+                camera_entity_ids.add(entity_id)
+            elif entity_id.startswith("image."):
+                image_entity_ids.add(entity_id)
+            else:
+                other_entity_ids.add(entity_id)
 
         if self._layouts and 0 <= self._current_screen < len(self._layouts):
             layout = self._layouts[self._current_screen]
@@ -1296,21 +1313,18 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
                 if slot.widget and isinstance(slot.widget, CameraWidget):
                     entity_id = slot.widget.config.entity_id
                     if entity_id:
-                        if entity_id.startswith("camera."):
-                            camera_entity_ids.add(entity_id)
-                        else:
-                            other_entity_ids.add(entity_id)
+                        _classify(entity_id)
 
         # Also collect entities from notification
         if self._notification_data:
             image_source = self._notification_data.get("image")
             if image_source:
-                if image_source.startswith("camera."):
-                    camera_entity_ids.add(image_source)
-                else:
-                    other_entity_ids.add(image_source)
+                _classify(image_source)
 
-        # Fetch non-camera entities first (they populate the same cache)
+        # Fetch URL-based entities (image.* and misc) first — they share
+        # the same image cache as cameras.
+        for entity_id in image_entity_ids:
+            await self._async_fetch_url_image_to_cache(entity_id)
         for entity_id in other_entity_ids:
             await self._async_fetch_url_image_to_cache(entity_id)
 
@@ -1337,8 +1351,10 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         # Get state for the entity
         image_url = None
         state = self.hass.states.get(source)
+        image_last_updated: Any = None
         if state:
             image_url = state.attributes.get("entity_picture")
+            image_last_updated = state.attributes.get("image_last_updated")
 
         # Only allow internal Home Assistant URLs (starting with /)
         if not image_url or not image_url.startswith("/"):
@@ -1352,6 +1368,19 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
 
         # Ensure base_url doesn't have trailing slash and image_url has leading slash
         full_url = f"{base_url.rstrip('/')}/{image_url.lstrip('/')}"
+
+        # For `image.*` entities, append `image_last_updated` as a cache-bust
+        # query param. Frigate and other image platforms keep the same
+        # `entity_picture` URL across updates; without busting, intermediaries
+        # may serve a stale snapshot.
+        if source.startswith("image.") and image_last_updated is not None:
+            ts = (
+                image_last_updated.isoformat()
+                if hasattr(image_last_updated, "isoformat")
+                else str(image_last_updated)
+            )
+            separator = "&" if "?" in full_url else "?"
+            full_url = f"{full_url}{separator}_={ts}"
 
         try:
             # Use Home Assistant's managed session for proper SSL/auth handling

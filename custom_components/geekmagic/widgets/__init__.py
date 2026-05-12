@@ -14,6 +14,7 @@ from .clock import ClockWidget
 from .entity import EntityWidget
 from .gauge import GaugeWidget
 from .icon import IconWidget
+from .image_entity import ImageEntityWidget
 from .media import MediaWidget
 from .progress import MultiProgressWidget, ProgressWidget
 from .status import StatusListWidget, StatusWidget
@@ -32,6 +33,7 @@ __all__ = [
     "EntityWidget",
     "GaugeWidget",
     "IconWidget",
+    "ImageEntityWidget",
     "MediaWidget",
     "MultiProgressWidget",
     "ProgressWidget",
@@ -54,6 +56,7 @@ _ALL_WIDGETS: list[type[Widget]] = [
     EntityWidget,
     GaugeWidget,
     IconWidget,
+    ImageEntityWidget,
     MediaWidget,
     MultiProgressWidget,
     ProgressWidget,
