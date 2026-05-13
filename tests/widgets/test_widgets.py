@@ -61,6 +61,26 @@ def find_value_text(comp: Any) -> str | None:
     return None
 
 
+def _collect_text_strings(comp: Any) -> list[str]:
+    """Walk a Component tree and return every ``Text.text`` value.
+
+    Used to assert that a widget's render-tree contains specific
+    strings without going through the Pillow rasterizer.
+    """
+    from custom_components.geekmagic.widgets.components import Column, Panel, Row, Text
+
+    if isinstance(comp, Text):
+        return [comp.text]
+    if isinstance(comp, Panel):
+        return _collect_text_strings(comp.child) if comp.child else []
+    if isinstance(comp, Column | Row):
+        out: list[str] = []
+        for child in comp.children:
+            out.extend(_collect_text_strings(child))
+        return out
+    return []
+
+
 def _build_entity_state(hass: Any, entity_id: str) -> EntityState | None:
     """Build EntityState from hass for a given entity_id."""
     state = hass.states.get(entity_id)
@@ -1441,28 +1461,23 @@ class TestParseForecastDayName:
         # An unparseable non-date string with no alpha-prefix → fallback
         assert _parse_forecast_day_name("12345", "D3") == "D3"
 
-    def test_aemet_forecast_renders_correct_day_labels(self, renderer, hass):
-        """Full render path with an AEMET-shaped forecast — guards
-        against future regressions in the call sites that pass `day.get(
-        "datetime")` into the parser."""
+    def test_aemet_forecast_builds_correct_day_label_text_nodes(self):
+        """The forecast columns the widget builds for an AEMET-shaped
+        forecast contain `Text` nodes with the correct local-Madrid
+        weekday strings (WED/THU/FRI), not the UTC weekdays that the
+        pre-fix parser would have produced (TUE/WED/THU)."""
         import zoneinfo
 
         from homeassistant.util import dt as dt_util
 
+        from custom_components.geekmagic.widgets.components import THEME_WARNING
+        from custom_components.geekmagic.widgets.weather import WeatherDisplay
+
         prev = dt_util.get_default_time_zone()
         dt_util.set_default_time_zone(zoneinfo.ZoneInfo("Europe/Madrid"))
         try:
-            img, draw = renderer.create_canvas()
-            ctx = RenderContext(draw, (10, 10, 250, 250), renderer)
-            hass.states.async_set(
-                "weather.home",
-                "sunny",
-                {"temperature": 22, "humidity": 45},
-            )
-
-            # AEMET-shaped forecast: UTC midnight - 2h, representing
-            # Madrid's local day-start. Three consecutive days starting
-            # tomorrow.
+            # AEMET-shape: UTC instants whose local-Madrid date is the
+            # day after the UTC date. Three consecutive local days.
             forecast = [
                 {
                     "datetime": "2026-05-12T22:00:00+00:00",  # Wed local
@@ -1483,17 +1498,25 @@ class TestParseForecastDayName:
                     "templow": 11,
                 },
             ]
-            config = WidgetConfig(widget_type="weather", slot=0, entity_id="weather.home")
-            widget = WeatherWidget(config)
-            state = _build_widget_state(hass, "weather.home", forecast=forecast)
-            widget.render(ctx, state)
-            assert img.size == (480, 480)
+            display = WeatherDisplay(
+                temperature=22,
+                humidity=45,
+                condition="sunny",
+                forecast=forecast,
+                show_forecast=True,
+                forecast_days=3,
+            )
+            # Build the component tree directly (no Pillow render). The
+            # cell is large enough to take the "full" layout branch.
+            tree = display._build_full(240, 240, "weather-sunny", THEME_WARNING)
+            texts = _collect_text_strings(tree)
 
-            # And the parser the widget invokes returns the correct
-            # local-Madrid weekdays for those entries.
-            assert _parse_forecast_day_name(forecast[0]["datetime"], "X") == "Wed"
-            assert _parse_forecast_day_name(forecast[1]["datetime"], "X") == "Thu"
-            assert _parse_forecast_day_name(forecast[2]["datetime"], "X") == "Fri"
+            assert "WED" in texts
+            assert "THU" in texts
+            assert "FRI" in texts
+            # And the buggy pre-fix labels are NOT present — guards
+            # against a regression that strips tzinfo again.
+            assert "TUE" not in texts
         finally:
             dt_util.set_default_time_zone(prev)
 

@@ -92,18 +92,19 @@ def _parse_forecast_day_name(value: Any, fallback: str) -> str:
     """Return the weekday abbreviation for a forecast item's timestamp.
 
     The HA `weather.get_forecasts` service is not consistent across
-    providers about the `datetime` field. Observed shapes include:
+    providers about the `datetime` field. Shapes seen in the wild and
+    in bug reports include:
 
     - Full ISO with offset: ``"2026-05-13T00:00:00+00:00"`` (most providers)
-    - Full ISO in UTC for a local-day midnight: ``"2026-05-12T22:00:00+00:00"``
-      (AEMET — Spain CEST is UTC+2, so the local day starts at 22:00 UTC
-      the day before)
+    - Full ISO in UTC where the offset puts local-midnight on the
+      previous UTC day (e.g. AEMET in summer Spain — issue #75)
     - Date-only: ``"2026-05-13"``
     - A Python ``datetime`` or ``date`` object (some providers / mocks)
 
     The weekday MUST be computed in Home Assistant's configured local
-    timezone — computing it in UTC shifts the displayed day by ±1 in
-    offset regions, which is the AEMET bug (issue #75).
+    timezone — computing it in UTC shifts the displayed day by ±1 for
+    any provider whose timestamp encoding doesn't already match the
+    local day.
     """
     if value is None or value == "":
         return fallback
