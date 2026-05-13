@@ -69,7 +69,7 @@ class ClockWidget(Widget):
         date_str = now.strftime("%a, %b %d") if self.show_date else None
 
         return DataCard(
-            caption=self.config.label,
+            caption=self.resolved_label,
             hero=time_str,
             hero_color=self.config.color or THEME_TEXT_PRIMARY,
             supporting=[Chip(date_str)] if date_str else [],

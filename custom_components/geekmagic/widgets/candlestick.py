@@ -296,7 +296,7 @@ class CandlestickWidget(Widget):
         entity = state.entity
         current_value = None
         unit = ""
-        label = self.config.label
+        label = self.resolved_label
 
         if entity is not None:
             with contextlib.suppress(ValueError, TypeError):

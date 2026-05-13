@@ -18,6 +18,7 @@ from .device import GeekMagicDevice
 from .panel import async_register_panel
 from .store import GeekMagicStore
 from .websocket import async_register_websocket_commands
+from .widgets.helpers import render_template
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,6 +72,14 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         if not isinstance(device_ids, list):
             device_ids = [device_ids]
 
+        # Render Jinja2 templates in user-facing fields. The image field
+        # may contain an entity_id template (e.g. resolve which camera
+        # snapshot to display from an input_select).
+        data = dict(call.data)
+        for field in ("message", "image", "icon"):
+            if field in data:
+                data[field] = render_template(hass, data[field])
+
         # Get device registry to map device_ids to config entries
         dev_reg = dr.async_get(hass)
 
@@ -84,7 +93,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 if entry_id in hass.data[DOMAIN]:
                     coordinator = hass.data[DOMAIN][entry_id]
                     if isinstance(coordinator, GeekMagicCoordinator):
-                        await coordinator.trigger_notification(call.data)
+                        await coordinator.trigger_notification(data)
 
     hass.services.async_register(DOMAIN, "notify", async_handle_notify)
 

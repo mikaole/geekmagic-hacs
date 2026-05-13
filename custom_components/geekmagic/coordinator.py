@@ -82,6 +82,11 @@ from .widgets.candlestick import (
 )
 from .widgets.chart import ChartWidget
 from .widgets.clock import ClockWidget
+from .widgets.helpers import (
+    has_template_syntax,
+    render_template,
+    template_entity_ids,
+)
 from .widgets.icon import IconWidget
 from .widgets.media import MediaWidget
 from .widgets.state import EntityState, WidgetState
@@ -469,9 +474,51 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
             )
 
             widget = widget_class(config)
+            self._populate_template_deps(widget)
             layout.set_widget(slot, widget)
 
         return layout
+
+    def _populate_template_deps(self, widget: Any) -> None:
+        """Record entity IDs referenced by a widget's templated label.
+
+        Called once at widget construction time. The discovered entities
+        are surfaced via ``Widget.tracked_entities()`` so the coordinator
+        pre-fetches their state — which means the next refresh after a
+        source entity changes picks up the new rendered label.
+        """
+        label = widget.config.label
+        if not label:
+            return
+        try:
+            widget.set_template_entities(template_entity_ids(self.hass, label))
+        except Exception as err:
+            _LOGGER.debug("Failed to analyze label template %r: %s", label, err)
+            widget.set_template_entities([])
+
+    def _resolve_template_labels(self) -> None:
+        """Render Jinja2 templates in widget labels for the active layout.
+
+        Called once per update cycle from the event loop thread. The
+        rendered string is stashed on the widget so the executor-side
+        rendering pipeline can read it via ``widget.resolved_label``.
+        Literal labels skip rendering entirely — ``_rendered_label`` stays
+        ``None`` and ``resolved_label`` falls back to ``config.label``.
+        """
+        if not (self._layouts and 0 <= self._current_screen < len(self._layouts)):
+            return
+
+        layout = self._layouts[self._current_screen]
+        for slot in layout.slots:
+            widget = slot.widget
+            if widget is None:
+                continue
+            label = widget.config.label
+            if not has_template_syntax(label):
+                widget.set_rendered_label(None)
+                continue
+            rendered = render_template(self.hass, label)
+            widget.set_rendered_label(str(rendered) if rendered is not None else None)
 
     @property
     def current_screen(self) -> int:
@@ -603,9 +650,10 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
                         attributes=dict(ha_state.attributes),
                     )
 
-            # Build EntityState for additional entities
+            # Build EntityState for additional entities (including any
+            # entities referenced by a templated label, via tracked_entities).
             additional: dict[str, EntityState] = {}
-            for eid in widget.get_entities():
+            for eid in widget.tracked_entities():
                 if eid != widget.config.entity_id:
                     ha_state = self.hass.states.get(eid)
                     if ha_state:
@@ -961,6 +1009,11 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
             await self._async_fetch_chart_history()
             await self._async_fetch_candlestick_history()
             await self._async_fetch_weather_forecasts()
+
+            # Resolve Jinja2 templates in widget labels — must happen in the
+            # event loop thread because ``Template.async_render`` is a
+            # callback-style method bound to the loop.
+            self._resolve_template_labels()
 
             # Render image in executor to avoid blocking the event loop
             # (Pillow image operations are CPU-intensive)

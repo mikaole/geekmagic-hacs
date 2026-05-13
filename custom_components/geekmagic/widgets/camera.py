@@ -118,7 +118,7 @@ class CameraWidget(Widget):
             state: Widget state with camera image
         """
         if state.image is None:
-            return _camera_placeholder(label=self.config.label or "No Image")
+            return _camera_placeholder(label=self.resolved_label or "No Image")
 
         label = self.label_for(state.entity, fallback="Camera") if self.show_label else None
 

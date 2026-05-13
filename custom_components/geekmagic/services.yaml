@@ -11,22 +11,22 @@ notify:
           integration: geekmagic
     message:
       name: Message
-      description: The notification text. If omitted, the image/icon will be fullscreen.
+      description: The notification text. Supports Jinja2 templates (e.g. "Hello {{ states('sensor.name') }}"). If omitted, the image/icon will be fullscreen.
       required: false
       selector:
-        text:
+        template:
     icon:
       name: Icon
-      description: Icon to display (e.g. mdi:bell).
+      description: Icon to display (e.g. mdi:bell). Supports Jinja2 templates.
       required: false
       selector:
-        icon:
+        template:
     image:
       name: Image Entity
-      description: Home Assistant entity to use for the image (e.g., camera.front_door, image.last_person, or media_player.spotify).
+      description: Home Assistant entity to use for the image (e.g., camera.front_door, image.last_person, or media_player.spotify). Supports Jinja2 templates.
       required: false
       selector:
-        entity: {}
+        template:
     duration:
       name: Duration
       description: How long to show the notification in seconds (default 10).

@@ -42,11 +42,36 @@ class Widget(ABC):
             config: Widget configuration
         """
         self.config = config
+        # Pre-rendered template label (populated by the coordinator on each
+        # update cycle when ``config.label`` contains Jinja2 syntax). Falls
+        # back to ``config.label`` when unset or when the template fails.
+        self._rendered_label: str | None = None
+        # Entity IDs the label template depends on, populated at widget
+        # construction time. Surfaced via ``get_entities()`` so the
+        # coordinator pre-fetches their state for rendering.
+        self._template_entities: list[str] = []
 
     @property
     def entity_id(self) -> str | None:
         """Get the entity ID this widget tracks."""
         return self.config.entity_id
+
+    @property
+    def resolved_label(self) -> str | None:
+        """Return the rendered template label if available, else config.label.
+
+        Widgets that want the user-configured label (with templates already
+        resolved) should read this instead of ``self.config.label``.
+        """
+        return self._rendered_label or self.config.label
+
+    def set_rendered_label(self, value: str | None) -> None:
+        """Set the pre-rendered template label (coordinator only)."""
+        self._rendered_label = value
+
+    def set_template_entities(self, entity_ids: list[str]) -> None:
+        """Record entity IDs referenced by the label template (coordinator only)."""
+        self._template_entities = list(entity_ids)
 
     def get_entities(self) -> list[str]:
         """Return list of entity IDs this widget depends on.
@@ -57,17 +82,30 @@ class Widget(ABC):
             return [self.config.entity_id]
         return []
 
-    def label_for(self, entity: EntityState | None, *, fallback: str = "") -> str:
-        """Resolve display label: ``config.label`` > ``entity.friendly_name`` > ``fallback``.
+    def tracked_entities(self) -> list[str]:
+        """Return entities the coordinator should pre-fetch for this widget.
 
-        Pretty much every widget that renders a name needs this chain.
-        ``EntityState.friendly_name`` already falls back to ``entity_id``
-        when no friendly name attribute is set, so widgets that previously
-        wrote ``entity.friendly_name or entity.entity_id`` collapse to
-        a single ``self.label_for(entity, fallback=...)``.
+        Union of ``get_entities()`` and any entity IDs referenced by a
+        templated ``label`` — so changes to a template's source entities
+        propagate on the next refresh cycle.
         """
-        if self.config.label:
-            return self.config.label
+        entities = list(self.get_entities())
+        for eid in self._template_entities:
+            if eid not in entities:
+                entities.append(eid)
+        return entities
+
+    def label_for(self, entity: EntityState | None, *, fallback: str = "") -> str:
+        """Resolve display label: rendered label > ``entity.friendly_name`` > ``fallback``.
+
+        The rendered label is either the pre-rendered Jinja2 result (when
+        ``config.label`` contains template syntax) or the literal
+        ``config.label`` itself. ``EntityState.friendly_name`` already
+        falls back to ``entity_id`` when no friendly name attribute is set.
+        """
+        label = self.resolved_label
+        if label:
+            return label
         if entity is not None:
             return entity.friendly_name
         return fallback

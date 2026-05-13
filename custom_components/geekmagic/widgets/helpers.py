@@ -7,8 +7,61 @@ import json
 import logging
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from homeassistant.exceptions import TemplateError
+from homeassistant.helpers.template import Template
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def has_template_syntax(value: Any) -> bool:
+    """Return True if ``value`` looks like a Jinja2 template string."""
+    return isinstance(value, str) and ("{{" in value or "{%" in value)
+
+
+def render_template(hass: HomeAssistant | None, value: Any) -> Any:
+    """Render a Jinja2 template string against Home Assistant state.
+
+    Returns ``value`` unchanged when it is not a string or does not contain
+    template syntax. When the template raises ``TemplateError``, logs a
+    warning and falls back to the literal value.
+
+    Must be called from the event loop thread (uses ``async_render``).
+    """
+    if not has_template_syntax(value):
+        return value
+    if hass is None:
+        return value
+
+    try:
+        tpl = Template(value, hass)
+        return tpl.async_render(parse_result=False)
+    except TemplateError as err:
+        _LOGGER.warning("Template error rendering %r: %s", value, err)
+        return value
+
+
+def template_entity_ids(hass: HomeAssistant | None, value: Any) -> list[str]:
+    """Return entity IDs that a template depends on, or [] for literals.
+
+    Uses ``async_render_to_info()`` to introspect the template's entity
+    dependencies. Falls back to an empty list on any template error.
+    """
+    if not has_template_syntax(value) or hass is None:
+        return []
+
+    try:
+        tpl = Template(value, hass)
+        info = tpl.async_render_to_info()
+    except TemplateError as err:
+        _LOGGER.warning("Template error analyzing %r: %s", value, err)
+        return []
+    return sorted(info.entities)
+
 
 # Path to HA icon JSON files
 _HA_ICONS_DIR = Path(__file__).parent.parent / "data" / "ha_icons"

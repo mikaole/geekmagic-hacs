@@ -44,7 +44,7 @@ class TextWidget(Widget):
     def render(self, ctx: RenderContext, state: WidgetState) -> Component:
         """Render the text widget."""
         return DataCard(
-            caption=self.config.label,
+            caption=self.resolved_label,
             hero=self._get_text(state),
             hero_color=self.config.color or THEME_TEXT_PRIMARY,
         )
