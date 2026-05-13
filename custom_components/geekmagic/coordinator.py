@@ -520,12 +520,6 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         """Return True if the view at index is a device built-in display."""
         return 0 <= index < len(self._view_themes) and self._view_themes[index] is not None
 
-    def _builtin_view_theme(self, index: int) -> int | None:
-        """Return the device theme for a built-in view, or None for custom."""
-        if 0 <= index < len(self._view_themes):
-            return self._view_themes[index]
-        return None
-
     @property
     def current_screen_name(self) -> str:
         """Get current screen name."""
@@ -981,9 +975,6 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
                 # cycle running and we still think we're in custom), respect
                 # that. When a cycle is configured the integration owns the
                 # device state, so we don't fight it here.
-                cycle_interval = self.options.get(
-                    CONF_SCREEN_CYCLE_INTERVAL, DEFAULT_SCREEN_CYCLE_INTERVAL
-                )
                 if (
                     self._device_state
                     and self._device_state.theme is not None
@@ -1006,8 +997,7 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
             # the device) and skip our render/upload pipeline. The cycle timer
             # keeps running, so the next tick advances to the following view.
             if self._is_builtin_view(self._current_screen):
-                theme = self._view_themes[self._current_screen]
-                assert theme is not None
+                theme = cast("int", self._view_themes[self._current_screen])
                 self._display_mode = "builtin"
                 self._builtin_theme = theme
                 if self._last_device_theme != theme:
