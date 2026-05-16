@@ -74,7 +74,7 @@ class HistoryFetcher:
     def _resolve_recorder(self):
         """Return the recorder instance, or None if unavailable."""
         try:
-            from homeassistant.components.recorder import get_instance
+            from homeassistant.components.recorder import get_instance  # noqa: PLC0415
         except ImportError:
             _LOGGER.debug("Recorder not available")
             return None
@@ -95,7 +95,7 @@ class HistoryFetcher:
         `recorder.async_add_executor_job`, which only forwards positional
         arguments but the underlying function has many keyword-only ones.
         """
-        from homeassistant.components.recorder import history
+        from homeassistant.components.recorder import history  # noqa: PLC0415
 
         result = history.state_changes_during_period(
             self.hass,

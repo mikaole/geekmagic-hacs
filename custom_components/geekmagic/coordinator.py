@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -45,6 +44,7 @@ from .screen_builder import (
     migrate_options,
     screen_name_at,
 )
+from .widget_state_builder import PrefetchedData, build_widget_states
 from .widgets.base import WidgetConfig
 from .widgets.camera import CameraWidget
 from .widgets.candlestick import CandlestickWidget
@@ -52,7 +52,7 @@ from .widgets.chart import ChartWidget
 from .widgets.clock import ClockWidget
 from .widgets.icon import IconWidget
 from .widgets.media import MediaWidget
-from .widgets.state import EntityState, WidgetState
+from .widgets.state import WidgetState
 from .widgets.text import TextWidget
 from .widgets.theme import get_theme
 from .widgets.weather import WeatherWidget
@@ -316,100 +316,18 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         self._update_preview = True
 
     def _build_widget_states(self, layout: Layout) -> dict[int, WidgetState]:
-        """Build WidgetState for all widgets in a layout.
-
-        Args:
-            layout: Layout with widgets to build states for
-
-        Returns:
-            Dict mapping slot index to WidgetState
-        """
-        from datetime import UTC
-        from io import BytesIO
-        from zoneinfo import ZoneInfo
-
-        from PIL import Image
-
-        states: dict[int, WidgetState] = {}
-
-        # Get current time with HA timezone
-        tz = getattr(self.hass.config, "time_zone_obj", None) or UTC
-        now = datetime.now(tz=tz)
-
-        for slot in layout.slots:
-            widget = slot.widget
-            if widget is None:
-                continue
-
-            # Build EntityState for primary entity
-            primary_entity = None
-            if widget.config.entity_id:
-                ha_state = self.hass.states.get(widget.config.entity_id)
-                if ha_state:
-                    primary_entity = EntityState(
-                        entity_id=ha_state.entity_id,
-                        state=ha_state.state,
-                        attributes=dict(ha_state.attributes),
-                    )
-
-            # Build EntityState for additional entities
-            additional: dict[str, EntityState] = {}
-            for eid in widget.get_entities():
-                if eid != widget.config.entity_id:
-                    ha_state = self.hass.states.get(eid)
-                    if ha_state:
-                        additional[eid] = EntityState(
-                            entity_id=ha_state.entity_id,
-                            state=ha_state.state,
-                            attributes=dict(ha_state.attributes),
-                        )
-
-            # Get pre-fetched chart history
-            history: list[float] = []
-            if isinstance(widget, ChartWidget) and widget.config.entity_id:
-                history = self._chart_history.get(widget.config.entity_id, [])
-
-            # Get pre-fetched candlestick data
-            candlestick_data: list[tuple[float, float, float, float]] = []
-            if isinstance(widget, CandlestickWidget) and widget.config.entity_id:
-                candlestick_data = self._candlestick_data.get(widget.config.entity_id, [])
-
-            # Get pre-fetched camera image or media album art
-            image = None
-            if isinstance(widget, CameraWidget) and widget.config.entity_id:
-                image_bytes = self._camera_images.get(widget.config.entity_id)
-                if image_bytes:
-                    with contextlib.suppress(Exception):
-                        image = Image.open(BytesIO(image_bytes))
-            elif isinstance(widget, MediaWidget) and widget.config.entity_id:
-                image_bytes = self._media_images.get(widget.config.entity_id)
-                if image_bytes:
-                    with contextlib.suppress(Exception):
-                        image = Image.open(BytesIO(image_bytes))
-
-            # Get pre-fetched weather forecast
-            forecast: list[dict[str, Any]] = []
-            if isinstance(widget, WeatherWidget) and widget.config.entity_id:
-                forecast = self._weather_forecasts.get(widget.config.entity_id, [])
-
-            # Handle clock widget timezone override
-            widget_now = now
-            if isinstance(widget, ClockWidget) and hasattr(widget, "timezone") and widget.timezone:
-                with contextlib.suppress(Exception):
-                    widget_tz = ZoneInfo(widget.timezone)
-                    widget_now = datetime.now(tz=widget_tz)
-
-            states[slot.index] = WidgetState(
-                entity=primary_entity,
-                entities=additional,
-                history=history,
-                candlestick_data=candlestick_data,
-                image=image,
-                forecast=forecast,
-                now=widget_now,
-            )
-
-        return states
+        """Build WidgetState for every populated slot in `layout`."""
+        return build_widget_states(
+            layout,
+            self.hass,
+            PrefetchedData(
+                camera_images=self._camera_images,
+                media_images=self._media_images,
+                chart_history=self._chart_history,
+                candlestick_data=self._candlestick_data,
+                weather_forecasts=self._weather_forecasts,
+            ),
+        )
 
     def _render_display(self) -> tuple[bytes, bytes]:
         """Render the display image (runs in executor thread).

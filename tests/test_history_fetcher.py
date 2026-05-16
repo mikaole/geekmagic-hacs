@@ -50,9 +50,7 @@ class TestHistoryFetcher:
     @pytest.mark.asyncio
     async def test_fetch_numeric_returns_empty_when_recorder_unavailable(self):
         hass = MagicMock()
-        with patch(
-            "homeassistant.components.recorder.get_instance", side_effect=KeyError
-        ):
+        with patch("homeassistant.components.recorder.get_instance", side_effect=KeyError):
             fetcher = HistoryFetcher(hass)
         assert not fetcher.available
         assert await fetcher.fetch_numeric("sensor.foo", 1) == []
@@ -67,9 +65,7 @@ class TestHistoryFetcher:
             return_value=[FakeState("1"), FakeState("2"), FakeState("on")]
         )
 
-        with patch(
-            "homeassistant.components.recorder.get_instance", return_value=recorder
-        ):
+        with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
             fetcher = HistoryFetcher(hass)
 
         result = await fetcher.fetch_numeric("sensor.foo", 1)
@@ -81,9 +77,7 @@ class TestHistoryFetcher:
         hass = MagicMock()
         recorder = MagicMock()
         recorder.async_add_executor_job = AsyncMock(side_effect=RuntimeError("boom"))
-        with patch(
-            "homeassistant.components.recorder.get_instance", return_value=recorder
-        ):
+        with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
             fetcher = HistoryFetcher(hass)
 
         assert await fetcher.fetch_numeric("sensor.foo", 1) == []
@@ -93,9 +87,7 @@ class TestHistoryFetcher:
         hass = MagicMock()
         recorder = MagicMock()
         recorder.async_add_executor_job = AsyncMock(return_value=[])
-        with patch(
-            "homeassistant.components.recorder.get_instance", return_value=recorder
-        ):
+        with patch("homeassistant.components.recorder.get_instance", return_value=recorder):
             fetcher = HistoryFetcher(hass)
 
         assert await fetcher.fetch_ohlc("sensor.foo", 1, 60, 10) == []

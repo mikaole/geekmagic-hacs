@@ -6,9 +6,7 @@ Provides commands for managing views, devices, and preview rendering.
 from __future__ import annotations
 
 import base64
-import contextlib
 import logging
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -29,7 +27,6 @@ from .const import (
 )
 from .renderer import Renderer
 from .widgets import WIDGET_TYPE_SCHEMAS
-from .widgets.state import EntityState, WidgetState
 
 if TYPE_CHECKING:
     from .coordinator import GeekMagicCoordinator
@@ -408,6 +405,7 @@ async def ws_preview_render(
     # Import here to avoid circular imports
     from .history_fetcher import HistoryFetcher
     from .screen_builder import build_layout
+    from .widget_state_builder import PrefetchedData, build_widget_states
     from .widgets.candlestick import INTERVAL_TO_SECONDS
 
     fetcher = HistoryFetcher(hass)
@@ -475,68 +473,15 @@ async def ws_preview_render(
         """Render the view (runs in executor)."""
         renderer = Renderer()
         layout = build_layout(view_config)
-
-        # Build widget_states for rendering
-        from datetime import UTC
-        from zoneinfo import ZoneInfo
-
-        widget_states: dict[int, WidgetState] = {}
-        tz = getattr(hass.config, "time_zone_obj", None) or UTC
-        now = datetime.now(tz=tz)
-
-        for widget_data in view_config.get("widgets", []):
-            slot = widget_data.get("slot", 0)
-            if slot >= layout.get_slot_count():
-                continue
-
-            entity_id = widget_data.get("entity_id")
-            entity: EntityState | None = None
-
-            # Build entity state from hass
-            if entity_id:
-                state = hass.states.get(entity_id)
-                if state:
-                    entity = EntityState(
-                        entity_id=entity_id,
-                        state=state.state,
-                        attributes=dict(state.attributes),
-                    )
-
-            # Get chart history if available
-            history: list[float] = []
-            widget_type = widget_data.get("type")
-            if widget_type == "chart" and entity_id in chart_history:
-                history = chart_history[entity_id]
-
-            # Get candlestick data if available
-            candle_data: list[tuple[float, float, float, float]] = []
-            if widget_type == "candlestick" and entity_id in candlestick_data:
-                candle_data = candlestick_data[entity_id]
-
-            # Get weather forecast if available
-            forecast: list[dict[str, Any]] = []
-            if widget_type == "weather" and entity_id in weather_forecasts:
-                forecast = weather_forecasts[entity_id]
-
-            # Handle clock widget timezone override
-            widget_now = now
-            if widget_type == "clock":
-                tz_option = widget_data.get("options", {}).get("timezone")
-                if tz_option:
-                    with contextlib.suppress(Exception):
-                        widget_now = datetime.now(tz=ZoneInfo(tz_option))
-
-            widget_states[slot] = WidgetState(
-                entity=entity,
-                entities={},
-                history=history,
-                candlestick_data=candle_data,
-                forecast=forecast,
-                image=None,
-                now=widget_now,
-            )
-
-        # Render
+        widget_states = build_widget_states(
+            layout,
+            hass,
+            PrefetchedData(
+                chart_history=chart_history,
+                candlestick_data=candlestick_data,
+                weather_forecasts=weather_forecasts,
+            ),
+        )
         img, draw = renderer.create_canvas(background=layout.theme.background)
         layout.render(renderer, draw, widget_states)
         return renderer.to_png(img)
