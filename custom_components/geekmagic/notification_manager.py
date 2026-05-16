@@ -27,7 +27,7 @@ from .widgets.theme import get_theme
 
 if TYPE_CHECKING:
     import asyncio
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Callable, Coroutine
 
     from homeassistant.core import HomeAssistant
 
@@ -44,7 +44,7 @@ class NotificationManager:
     def __init__(
         self,
         hass: HomeAssistant,
-        request_refresh: Callable[[], Awaitable[None]],
+        request_refresh: Callable[[], Coroutine[None, None, None]],
     ) -> None:
         """Build a manager bound to a coordinator's `async_request_refresh`.
 
