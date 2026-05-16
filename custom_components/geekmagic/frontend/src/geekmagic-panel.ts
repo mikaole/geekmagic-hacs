@@ -394,10 +394,11 @@ export class GeekMagicPanel extends LitElement {
     .position-cell {
       width: 16px;
       height: 16px;
-      background: var(--divider-color);
+      background: var(--secondary-text-color);
+      opacity: 0.45;
       border-radius: 2px;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: background 0.15s, opacity 0.15s, box-shadow 0.15s;
     }
 
     .position-cell:hover {
@@ -407,6 +408,9 @@ export class GeekMagicPanel extends LitElement {
 
     .position-cell.active {
       background: var(--primary-color);
+      opacity: 1;
+      box-shadow: 0 0 0 1px var(--card-background-color),
+        0 0 0 2px var(--primary-color);
     }
 
     .position-cell.hero-main {
@@ -442,16 +446,18 @@ export class GeekMagicPanel extends LitElement {
       border-radius: 8px;
       background: var(--card-background-color);
       cursor: pointer;
-      transition: all 0.15s;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
     }
 
     .layout-option:hover {
       border-color: var(--primary-color);
+      background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.08);
     }
 
     .layout-option.selected {
       border-color: var(--primary-color);
-      background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.1);
+      background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.18);
+      box-shadow: 0 0 0 1px var(--primary-color);
     }
 
     .layout-icon {
@@ -462,13 +468,19 @@ export class GeekMagicPanel extends LitElement {
     }
 
     .layout-icon > div {
-      background: var(--primary-text-color);
-      opacity: 0.3;
+      background: var(--secondary-text-color);
+      opacity: 0.55;
       border-radius: 1px;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .layout-option:hover .layout-icon > div {
+      opacity: 0.75;
     }
 
     .layout-option.selected .layout-icon > div {
-      opacity: 0.6;
+      background: var(--primary-color);
+      opacity: 1;
     }
 
     /* Layout icon patterns */
