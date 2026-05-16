@@ -16,7 +16,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util import dt as dt_util
 
 from .const import (
     BACKOFF_LOG_INTERVAL,
@@ -34,6 +33,7 @@ from .const import (
     THEME_WATCHOS,
 )
 from .device import DeviceState, GeekMagicDevice, SpaceInfo
+from .history_fetcher import HistoryFetcher, extract_numeric_values
 from .layouts.fullscreen import FullscreenLayout
 from .layouts.hero import HeroLayout
 from .layouts.hero_simple import HeroSimpleLayout
@@ -47,11 +47,7 @@ from .screen_builder import (
 )
 from .widgets.base import WidgetConfig
 from .widgets.camera import CameraWidget
-from .widgets.candlestick import (
-    CandlestickWidget,
-    aggregate_ohlc,
-    extract_timestamped_values,
-)
+from .widgets.candlestick import CandlestickWidget
 from .widgets.chart import ChartWidget
 from .widgets.clock import ClockWidget
 from .widgets.icon import IconWidget
@@ -68,55 +64,14 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 # Re-exported for backwards compatibility (websocket and tests import these
-# from coordinator). New code should import from screen_builder directly.
-__all__ = ["CONF_ASSIGNED_VIEWS", "LAYOUT_CLASSES", "GeekMagicCoordinator"]
-
-
-# Binary states that should be converted to 1.0 (on/true)
-BINARY_ON_STATES = frozenset({"on", "true", "open", "home", "unlocked", "playing", "active"})
-# Binary states that should be converted to 0.0 (off/false)
-BINARY_OFF_STATES = frozenset(
-    {"off", "false", "closed", "not_home", "locked", "paused", "idle", "standby"}
-)
-
-
-def extract_numeric_values(history_states: list) -> list[float]:
-    """Extract numeric values from recorder history states.
-
-    Handles both State objects (with .state attribute) and
-    dictionaries (from minimal_response=True format).
-
-    Also converts binary states (on/off, open/closed, etc.) to 1.0/0.0
-    for charting binary_sensor entities.
-
-    Args:
-        history_states: List of State objects or dicts from recorder
-
-    Returns:
-        List of numeric float values, non-numeric states are skipped
-    """
-    values: list[float] = []
-    for state in history_states:
-        try:
-            # Handle both State objects and minimal_response dicts
-            state_value = state.state if hasattr(state, "state") else state.get("state")
-            if state_value is None:
-                continue
-
-            # Try numeric conversion first
-            try:
-                values.append(float(state_value))
-            except (ValueError, TypeError):
-                # Check for binary states
-                state_lower = str(state_value).lower()
-                if state_lower in BINARY_ON_STATES:
-                    values.append(1.0)
-                elif state_lower in BINARY_OFF_STATES:
-                    values.append(0.0)
-                # Skip other non-numeric states (unavailable, unknown, etc.)
-        except AttributeError:
-            continue
-    return values
+# names from coordinator). New code should import from screen_builder /
+# history_fetcher directly.
+__all__ = [
+    "CONF_ASSIGNED_VIEWS",
+    "LAYOUT_CLASSES",
+    "GeekMagicCoordinator",
+    "extract_numeric_values",
+]
 
 
 class GeekMagicCoordinator(DataUpdateCoordinator):
@@ -1242,47 +1197,11 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
             except Exception as e:
                 _LOGGER.debug("Failed to fetch album art for %s: %s", entity_id, e)
 
-    def _fetch_entity_history(self, entity_id: str, start: datetime, end: datetime) -> list:
-        """Fetch history for an entity (sync, runs in executor).
-
-        Uses keyword arguments for state_changes_during_period since
-        async_add_executor_job passes positional args and the function
-        has many optional parameters with defaults.
-
-        Args:
-            entity_id: Entity ID to fetch history for
-            start: Start time (datetime)
-            end: End time (datetime)
-
-        Returns:
-            List of State objects for the entity
-        """
-        from homeassistant.components.recorder import history
-
-        # state_changes_during_period returns dict[entity_id, list[State]]
-        # We need keyword arguments here since the function has many optional params
-        result = history.state_changes_during_period(
-            self.hass,
-            start,
-            end,
-            entity_id,
-            include_start_time_state=True,
-            no_attributes=True,
-        )
-        return result.get(entity_id, [])
-
     async def _async_fetch_chart_history(self) -> None:
-        """Pre-fetch history data for all chart widgets.
-
-        This must be called from the async context before rendering,
-        since recorder queries are async.
-        """
-        # Find all chart widgets in current layout
+        """Pre-fetch numeric history for all chart widgets on the active screen."""
         chart_widgets: list[tuple[str, ChartWidget]] = []
-
         if self._layouts and 0 <= self._current_screen < len(self._layouts):
-            layout = self._layouts[self._current_screen]
-            for slot in layout.slots:
+            for slot in self._layouts[self._current_screen].slots:
                 if slot.widget and isinstance(slot.widget, ChartWidget):
                     entity_id = slot.widget.config.entity_id
                     if entity_id:
@@ -1291,66 +1210,21 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         if not chart_widgets:
             return
 
-        # Get recorder instance
-        try:
-            from homeassistant.components.recorder import get_instance
-        except ImportError:
-            _LOGGER.debug("Recorder not available, charts will show no data")
+        fetcher = HistoryFetcher(self.hass)
+        if not fetcher.available:
             return
-
-        # get_instance() raises KeyError if recorder not available
-        try:
-            recorder = get_instance(self.hass)
-        except KeyError:
-            _LOGGER.debug("Recorder instance not available")
-            return
-
-        now = dt_util.utcnow()
 
         for entity_id, widget in chart_widgets:
-            try:
-                hours = widget.hours
-                start_time = now - timedelta(hours=hours)
-
-                # Use wrapper method to fetch history with keyword arguments
-                # (async_add_executor_job only supports positional args, but
-                # state_changes_during_period needs keyword args for its many optional params)
-                history_states = await recorder.async_add_executor_job(
-                    self._fetch_entity_history,
-                    entity_id,
-                    start_time,
-                    now,
-                )
-
-                if history_states:
-                    values = extract_numeric_values(history_states)
-
-                    if values:
-                        # Store in coordinator for state building
-                        self._chart_history[entity_id] = values
-                        _LOGGER.debug(
-                            "Fetched %d history points for %s",
-                            len(values),
-                            entity_id,
-                        )
-                    else:
-                        _LOGGER.debug(
-                            "No numeric values in history for %s",
-                            entity_id,
-                        )
-                else:
-                    _LOGGER.debug("No history returned for %s", entity_id)
-            except Exception as e:
-                _LOGGER.warning("Failed to fetch history for %s: %s", entity_id, e)
+            values = await fetcher.fetch_numeric(entity_id, widget.hours)
+            if values:
+                self._chart_history[entity_id] = values
+                _LOGGER.debug("Fetched %d history points for %s", len(values), entity_id)
 
     async def _async_fetch_candlestick_history(self) -> None:
-        """Pre-fetch history and aggregate OHLC data for all candlestick widgets."""
-        # Find all candlestick widgets in current layout
+        """Pre-fetch and aggregate OHLC data for all candlestick widgets."""
         candlestick_widgets: list[tuple[str, CandlestickWidget]] = []
-
         if self._layouts and 0 <= self._current_screen < len(self._layouts):
-            layout = self._layouts[self._current_screen]
-            for slot in layout.slots:
+            for slot in self._layouts[self._current_screen].slots:
                 if slot.widget and isinstance(slot.widget, CandlestickWidget):
                     entity_id = slot.widget.config.entity_id
                     if entity_id:
@@ -1359,58 +1233,17 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         if not candlestick_widgets:
             return
 
-        # Get recorder instance
-        try:
-            from homeassistant.components.recorder import get_instance
-        except ImportError:
-            _LOGGER.debug("Recorder not available, candlestick charts will show no data")
+        fetcher = HistoryFetcher(self.hass)
+        if not fetcher.available:
             return
-
-        try:
-            recorder = get_instance(self.hass)
-        except KeyError:
-            _LOGGER.debug("Recorder instance not available")
-            return
-
-        now = dt_util.utcnow()
 
         for entity_id, widget in candlestick_widgets:
-            try:
-                hours = widget.hours
-                start_time = now - timedelta(hours=hours)
-
-                history_states = await recorder.async_add_executor_job(
-                    self._fetch_entity_history,
-                    entity_id,
-                    start_time,
-                    now,
-                )
-
-                if history_states:
-                    timestamped = extract_timestamped_values(history_states)
-
-                    if timestamped:
-                        candles = aggregate_ohlc(
-                            timestamped,
-                            widget.interval_seconds,
-                            widget.candle_count,
-                        )
-                        if candles:
-                            self._candlestick_data[entity_id] = candles
-                            _LOGGER.debug(
-                                "Aggregated %d candles for %s",
-                                len(candles),
-                                entity_id,
-                            )
-                    else:
-                        _LOGGER.debug(
-                            "No numeric timestamped values for %s",
-                            entity_id,
-                        )
-                else:
-                    _LOGGER.debug("No history returned for candlestick %s", entity_id)
-            except Exception as e:
-                _LOGGER.warning("Failed to fetch candlestick history for %s: %s", entity_id, e)
+            candles = await fetcher.fetch_ohlc(
+                entity_id, widget.hours, widget.interval_seconds, widget.candle_count
+            )
+            if candles:
+                self._candlestick_data[entity_id] = candles
+                _LOGGER.debug("Aggregated %d candles for %s", len(candles), entity_id)
 
     async def _async_fetch_weather_forecasts(self) -> None:
         """Pre-fetch forecast data for all weather widgets.
