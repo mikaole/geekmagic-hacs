@@ -19,6 +19,9 @@ from .progress import MultiProgressWidget, ProgressWidget
 from .status import StatusListWidget, StatusWidget
 from .text import TextWidget
 from .weather import WeatherWidget
+from .word_clock import WordClockWidget
+from .pixel_clock import PixelClockWidget
+from .system_monitor import SystemMonitorWidget
 
 __all__ = [
     "WIDGET_CLASSES",
@@ -39,6 +42,9 @@ __all__ = [
     "StatusWidget",
     "TextWidget",
     "WeatherWidget",
+    "WordClockWidget",
+    "PixelClockWidget",
+    "SystemMonitorWidget",
     "Widget",
     "WidgetConfig",
 ]
@@ -61,6 +67,9 @@ _ALL_WIDGETS: list[type[Widget]] = [
     StatusWidget,
     TextWidget,
     WeatherWidget,
+    WordClockWidget,
+    PixelClockWidget,
+    SystemMonitorWidget,
 ]
 
 # Widget type string -> widget class mapping (derived from WIDGET_TYPE class attribute)
