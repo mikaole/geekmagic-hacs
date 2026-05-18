@@ -9,6 +9,12 @@ This fork of [adrienbrault/geekmagic-hacs](https://github.com/adrienbrault/geekm
 | Word Clock | `widgets/word_clock.py` | `word_clock` | No | Time as illuminated words on a letter grid |
 | Pixel Clock | `widgets/pixel_clock.py` | `pixel_clock` | No | Retro pixel-art digits (green/amber/white) |
 | System Monitor | `widgets/system_monitor.py` | `system_monitor` | No | CPU/RAM/disk/temp bars from Glances API |
+| Analog Clock | `widgets/analog_clock.py` | `analog_clock` | No | Minimalist analog clock face with thin hands |
+| Pi-hole Dashboard | `widgets/pihole_dashboard.py` | `pihole_dashboard` | Yes | Arc gauge with blocked % + query counts |
+| Weather Card | `widgets/weather_card.py` | `weather_card` | Yes (weather) | Clean weather, integer temps, 3-day forecast |
+| Niu Road | `widgets/niu_road.py` | `niu_road` | Yes (sensor) | Battery as road bar with scooter icon |
+| Energy Graph | `widgets/energy_graph.py` | `energy_graph` | Yes (sensor) | Green energy sparkline with Grün/Gelb/Rot label |
+| Berlin Greeting | `widgets/berlin_greeting.py` | `berlin_greeting` | Yes (weather) | German time-greeting + temp + date |
 
 ## Widget Pattern
 

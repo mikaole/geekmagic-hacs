@@ -22,6 +22,12 @@ from .weather import WeatherWidget
 from .word_clock import WordClockWidget
 from .pixel_clock import PixelClockWidget
 from .system_monitor import SystemMonitorWidget
+from .analog_clock import AnalogClockWidget
+from .pihole_dashboard import PiholeDashboardWidget
+from .weather_card import WeatherCardWidget
+from .niu_road import NiuRoadWidget
+from .energy_graph import EnergyGraphWidget
+from .berlin_greeting import BerlinGreetingWidget
 
 __all__ = [
     "WIDGET_CLASSES",
@@ -45,6 +51,12 @@ __all__ = [
     "WordClockWidget",
     "PixelClockWidget",
     "SystemMonitorWidget",
+    "AnalogClockWidget",
+    "PiholeDashboardWidget",
+    "WeatherCardWidget",
+    "NiuRoadWidget",
+    "EnergyGraphWidget",
+    "BerlinGreetingWidget",
     "Widget",
     "WidgetConfig",
 ]
@@ -70,6 +82,12 @@ _ALL_WIDGETS: list[type[Widget]] = [
     WordClockWidget,
     PixelClockWidget,
     SystemMonitorWidget,
+    AnalogClockWidget,
+    PiholeDashboardWidget,
+    WeatherCardWidget,
+    NiuRoadWidget,
+    EnergyGraphWidget,
+    BerlinGreetingWidget,
 ]
 
 # Widget type string -> widget class mapping (derived from WIDGET_TYPE class attribute)
