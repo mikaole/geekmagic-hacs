@@ -28,6 +28,7 @@ from .weather_card import WeatherCardWidget
 from .niu_road import NiuRoadWidget
 from .energy_graph import EnergyGraphWidget
 from .berlin_greeting import BerlinGreetingWidget
+from .server_stats import ServerStatsWidget
 
 __all__ = [
     "WIDGET_CLASSES",
@@ -57,6 +58,7 @@ __all__ = [
     "NiuRoadWidget",
     "EnergyGraphWidget",
     "BerlinGreetingWidget",
+    "ServerStatsWidget",
     "Widget",
     "WidgetConfig",
 ]
@@ -88,6 +90,7 @@ _ALL_WIDGETS: list[type[Widget]] = [
     NiuRoadWidget,
     EnergyGraphWidget,
     BerlinGreetingWidget,
+    ServerStatsWidget,
 ]
 
 # Widget type string -> widget class mapping (derived from WIDGET_TYPE class attribute)

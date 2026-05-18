@@ -15,6 +15,7 @@ This fork of [adrienbrault/geekmagic-hacs](https://github.com/adrienbrault/geekm
 | Niu Road | `widgets/niu_road.py` | `niu_road` | Yes (sensor) | Battery as road bar with scooter icon |
 | Energy Graph | `widgets/energy_graph.py` | `energy_graph` | Yes (sensor) | Green energy sparkline with Grün/Gelb/Rot label |
 | Berlin Greeting | `widgets/berlin_greeting.py` | `berlin_greeting` | Yes (weather) | German time-greeting + temp + date |
+| Server Stats | `widgets/server_stats.py` | `server_stats` | Yes (sensors) | Homepage-style compact stats overview |
 
 ## Widget Pattern
 
