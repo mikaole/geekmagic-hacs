@@ -426,6 +426,50 @@ THEME_FOREST = Theme(
     tint_track_opacity=0.20,
 )
 
+# 11. Liquid Glass — frosted translucent, iOS Liquid Glass inspired
+#    Designed for white desks/displays: pale frosted backgrounds, muted
+#    blue-silver accents, subtle borders, elegant hierarchy. Information
+#    is conveyed through soft contrast, not bold color.
+THEME_LIQUID_GLASS = Theme(
+    name="liquid_glass",
+    primary=(88, 140, 200),       # Muted steel blue — not loud, just present
+    secondary=(140, 130, 180),    # Soft lavender — secondary accents
+    success=(80, 180, 130),       # Sage green — calm positive
+    warning=(210, 170, 80),       # Warm amber — subtle caution
+    error=(200, 95, 95),          # Muted coral — soft error
+    info=(88, 140, 200),          # Matches primary
+    muted=(175, 180, 190),        # Cool silver-gray
+    background=(240, 242, 246),   # Frosted white — not pure white, slight cool tint
+    surface=(248, 249, 252),      # Glass panel — barely visible lift
+    surface_variant=(235, 237, 242),  # Frosted divider
+    border=(215, 218, 228),       # Subtle silver edge — frosted glass border
+    text_primary=(35, 40, 55),    # Deep ink — high contrast on light
+    text_secondary=(105, 112, 130),   # Slate gray — readable labels
+    text_tertiary=(160, 165, 178),    # Light slate — captions
+    text_on_primary=(255, 255, 255),  # White on accent fills
+    accent_colors=(
+        (88, 140, 200),           # Steel blue
+        (140, 130, 180),          # Lavender
+        (80, 180, 130),           # Sage green
+        (200, 140, 100),          # Warm bronze
+        (160, 120, 180),          # Soft purple
+        (90, 165, 175),           # Teal mist
+    ),
+    corner_radius=16,             # Rounded — glass panel feel
+    border_width=1,               # Hairline border — frosted glass edge
+    border_style="solid",
+    layout_padding=6,
+    widget_padding=6,
+    gap=6,
+    value_bold=True,
+    label_weight="regular",
+    rounded_font=True,            # Nunito — soft, rounded, matches glass
+    surface_chrome=True,          # Glass panels behind widgets
+    tint_track=True,
+    tint_track_opacity=0.14,      # Very subtle tinted tracks
+    bar_background=(222, 225, 232),   # Frosted track
+)
+
 # 10. Candy — playful pastel (light variant)
 THEME_CANDY = Theme(
     name="candy",
@@ -478,6 +522,7 @@ THEMES: dict[str, Theme] = {
     "sunset": THEME_SUNSET,
     "forest": THEME_FOREST,
     "candy": THEME_CANDY,
+    "liquid_glass": THEME_LIQUID_GLASS,
 }
 
 DEFAULT_THEME = THEME_WATCHOS
@@ -504,6 +549,7 @@ __all__ = [
     "THEMES",
     "THEME_CANDY",
     "THEME_CLASSIC",
+    "THEME_LIQUID_GLASS",
     "THEME_FOREST",
     "THEME_LIGHT",
     "THEME_MINIMAL",
