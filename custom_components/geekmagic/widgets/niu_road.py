@@ -114,13 +114,13 @@ class _NiuRoadCanvas(Component):
 
         # Road dashes for visual texture
         dash_y = road_y + road_h // 2
-        dash_color = resolve_theme_color(THEME_TEXT_SECONDARY, ctx.theme)
+        dash_color = resolve_theme_color(THEME_MUTED, ctx.theme)
         for dx in range(road_x1 + 12, road_x2 - 6, 16):
             # Only draw dashes on the unfilled part
             if dx > road_x1 + fill_w + 4:
-                ctx.draw.line(
+                ctx.draw_line(
                     [(dx, dash_y), (dx + 6, dash_y)],
-                    fill=(*dash_color, 80) if len(dash_color) == 3 else dash_color,
+                    fill=dash_color,
                     width=1,
                 )
 

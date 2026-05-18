@@ -184,8 +184,8 @@ class _PixelClockCanvas(Component):
                     if val:
                         rx = cursor_x + col_i * px
                         ry = start_y + row_i * px
-                        ctx.draw.rectangle(
-                            [rx, ry, rx + px - 1, ry + px - 1],
+                        ctx.draw_rect(
+                            (rx, ry, rx + px - 1, ry + px - 1),
                             fill=digit_rgb,
                         )
             cursor_x += (4 + 1) * px  # 4 cols + 1 gap

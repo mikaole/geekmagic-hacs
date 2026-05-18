@@ -160,43 +160,52 @@ class SystemMonitorWidget(Widget):
             import httpx  # noqa: PLC0415
 
             base = self.glances_url.rstrip("/")
-            with httpx.Client(timeout=5.0) as client:
-                cpu_resp = client.get(f"{base}/api/4/cpu")
-                mem_resp = client.get(f"{base}/api/4/mem")
-                fs_resp = client.get(f"{base}/api/4/fs")
-                sensors_resp = client.get(f"{base}/api/4/sensors")
-
             metrics: dict[str, float] = {}
 
-            if cpu_resp.status_code == 200:
-                cpu = cpu_resp.json()
-                metrics["CPU"] = cpu.get("total", 0.0)
+            # Short timeout (2s) to avoid blocking the HA render thread.
+            # Each request is wrapped individually so partial data still renders.
+            with httpx.Client(timeout=2.0) as client:
+                try:
+                    resp = client.get(f"{base}/api/4/cpu")
+                    if resp.status_code == 200:
+                        metrics["CPU"] = resp.json().get("total", 0.0)
+                except Exception:
+                    pass
 
-            if mem_resp.status_code == 200:
-                mem = mem_resp.json()
-                metrics["RAM"] = mem.get("percent", 0.0)
+                try:
+                    resp = client.get(f"{base}/api/4/mem")
+                    if resp.status_code == 200:
+                        metrics["RAM"] = resp.json().get("percent", 0.0)
+                except Exception:
+                    pass
 
-            if fs_resp.status_code == 200:
-                fs_list = fs_resp.json()
-                if fs_list:
-                    # Use the root filesystem or the first one
-                    root = next(
-                        (f for f in fs_list if f.get("mnt_point") == "/"),
-                        fs_list[0],
-                    )
-                    metrics["DISK"] = root.get("percent", 0.0)
+                try:
+                    resp = client.get(f"{base}/api/4/fs")
+                    if resp.status_code == 200:
+                        fs_list = resp.json()
+                        if fs_list:
+                            root = next(
+                                (f for f in fs_list if f.get("mnt_point") == "/"),
+                                fs_list[0],
+                            )
+                            metrics["DISK"] = root.get("percent", 0.0)
+                except Exception:
+                    pass
 
-            if sensors_resp.status_code == 200:
-                sensors = sensors_resp.json()
-                # Find a CPU/core temperature sensor
-                for s in sensors:
-                    if s.get("type") == "temperature_core":
-                        metrics["TEMP"] = s.get("value", 0.0)
-                        break
+                try:
+                    resp = client.get(f"{base}/api/4/sensors")
+                    if resp.status_code == 200:
+                        for s in resp.json():
+                            if s.get("type") == "temperature_core":
+                                metrics["TEMP"] = s.get("value", 0.0)
+                                break
+                except Exception:
+                    pass
 
-            self._cached_metrics = metrics
-            return metrics
+            if metrics:
+                self._cached_metrics = metrics
+            return self._cached_metrics
 
         except Exception:
-            _LOGGER.debug("Failed to fetch Glances metrics, using cached data")
+            _LOGGER.debug("Failed to connect to Glances, using cached data")
             return self._cached_metrics

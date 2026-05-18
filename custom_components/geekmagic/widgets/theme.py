@@ -432,28 +432,28 @@ THEME_FOREST = Theme(
 #    is conveyed through soft contrast, not bold color.
 THEME_LIQUID_GLASS = Theme(
     name="liquid_glass",
-    primary=(88, 140, 200),       # Muted steel blue — not loud, just present
-    secondary=(140, 130, 180),    # Soft lavender — secondary accents
-    success=(80, 180, 130),       # Sage green — calm positive
-    warning=(210, 170, 80),       # Warm amber — subtle caution
-    error=(200, 95, 95),          # Muted coral — soft error
-    info=(88, 140, 200),          # Matches primary
-    muted=(175, 180, 190),        # Cool silver-gray
-    background=(240, 242, 246),   # Frosted white — not pure white, slight cool tint
-    surface=(248, 249, 252),      # Glass panel — barely visible lift
-    surface_variant=(235, 237, 242),  # Frosted divider
-    border=(215, 218, 228),       # Subtle silver edge — frosted glass border
-    text_primary=(35, 40, 55),    # Deep ink — high contrast on light
-    text_secondary=(105, 112, 130),   # Slate gray — readable labels
-    text_tertiary=(160, 165, 178),    # Light slate — captions
+    primary=(108, 145, 185),      # Slate blue — blends with light-blue room accents
+    secondary=(145, 160, 140),    # Sage green — matches furniture & plants
+    success=(120, 175, 135),      # Soft sage — calm positive
+    warning=(195, 170, 110),      # Warm sand/beige — not harsh orange
+    error=(190, 105, 100),        # Muted terracotta — soft error
+    info=(108, 145, 185),         # Matches primary
+    muted=(185, 185, 180),        # Warm gray — less blue, more linen
+    background=(243, 243, 240),   # Warm frosted linen — not cool blue
+    surface=(249, 249, 246),      # Warm glass panel — barely visible lift
+    surface_variant=(237, 237, 234),  # Warm frosted divider
+    border=(218, 218, 214),       # Warm silver edge — frosted glass border
+    text_primary=(40, 42, 48),    # Warm dark ink — high contrast on light
+    text_secondary=(108, 110, 118),   # Warm slate — readable labels
+    text_tertiary=(162, 163, 168),    # Warm light slate — captions
     text_on_primary=(255, 255, 255),  # White on accent fills
     accent_colors=(
-        (88, 140, 200),           # Steel blue
-        (140, 130, 180),          # Lavender
-        (80, 180, 130),           # Sage green
-        (200, 140, 100),          # Warm bronze
-        (160, 120, 180),          # Soft purple
-        (90, 165, 175),           # Teal mist
+        (108, 145, 185),          # Slate blue
+        (145, 160, 140),          # Sage green
+        (195, 170, 110),          # Warm sand
+        (140, 165, 168),          # Soft teal
+        (155, 140, 165),          # Muted lavender
+        (175, 148, 120),          # Warm bronze
     ),
     corner_radius=16,             # Rounded — glass panel feel
     border_width=1,               # Hairline border — frosted glass edge
@@ -467,7 +467,7 @@ THEME_LIQUID_GLASS = Theme(
     surface_chrome=True,          # Glass panels behind widgets
     tint_track=True,
     tint_track_opacity=0.14,      # Very subtle tinted tracks
-    bar_background=(222, 225, 232),   # Frosted track
+    bar_background=(225, 225, 222),   # Warm frosted track
 )
 
 # 10. Candy — playful pastel (light variant)

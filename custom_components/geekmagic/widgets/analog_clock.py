@@ -73,8 +73,8 @@ class _AnalogClockFace(Component):
             dot_r = 3 if i % 3 == 0 else 2  # Larger dots at 12/3/6/9
             mx = cx + int((radius - 8) * math.cos(angle))
             my = cy + int((radius - 8) * math.sin(angle))
-            ctx.draw.ellipse(
-                [mx - dot_r, my - dot_r, mx + dot_r, my + dot_r],
+            ctx.draw_ellipse(
+                (mx - dot_r, my - dot_r, mx + dot_r, my + dot_r),
                 fill=marker_rgb,
             )
 
@@ -87,7 +87,7 @@ class _AnalogClockFace(Component):
             ty1 = cy + int((radius - 4) * math.sin(angle))
             tx2 = cx + int((radius - 1) * math.cos(angle))
             ty2 = cy + int((radius - 1) * math.sin(angle))
-            ctx.draw.line([(tx1, ty1), (tx2, ty2)], fill=tick_rgb, width=1)
+            ctx.draw_line([(tx1, ty1), (tx2, ty2)], fill=tick_rgb, width=1)
 
         # Hour hand
         h_angle = math.radians(
@@ -96,14 +96,14 @@ class _AnalogClockFace(Component):
         h_len = int(radius * 0.55)
         hx = cx + int(h_len * math.cos(h_angle))
         hy = cy + int(h_len * math.sin(h_angle))
-        ctx.draw.line([(cx, cy), (hx, hy)], fill=hand_rgb, width=3)
+        ctx.draw_line([(cx, cy), (hx, hy)], fill=hand_rgb, width=3)
 
         # Minute hand
         m_angle = math.radians(self.minute * 6 + self.second * 0.1 - 90)
         m_len = int(radius * 0.78)
         mx = cx + int(m_len * math.cos(m_angle))
         my = cy + int(m_len * math.sin(m_angle))
-        ctx.draw.line([(cx, cy), (mx, my)], fill=hand_rgb, width=2)
+        ctx.draw_line([(cx, cy), (mx, my)], fill=hand_rgb, width=2)
 
         # Second hand (optional, thin)
         if self.show_seconds:
@@ -112,11 +112,11 @@ class _AnalogClockFace(Component):
             sx = cx + int(s_len * math.cos(s_angle))
             sy = cy + int(s_len * math.sin(s_angle))
             accent = resolve_theme_color(THEME_PRIMARY, ctx.theme)
-            ctx.draw.line([(cx, cy), (sx, sy)], fill=accent, width=1)
+            ctx.draw_line([(cx, cy), (sx, sy)], fill=accent, width=1)
 
         # Center dot
-        ctx.draw.ellipse(
-            [cx - 3, cy - 3, cx + 3, cy + 3],
+        ctx.draw_ellipse(
+            (cx - 3, cy - 3, cx + 3, cy + 3),
             fill=hand_rgb,
         )
 
