@@ -17,6 +17,7 @@ from .colors import (
     THEME_PRIMARY,
     THEME_SUCCESS,
     THEME_TEXT_PRIMARY,
+    THEME_TEXT_SECONDARY,
     THEME_WARNING,
     Color,
     resolve_theme_color,
@@ -199,7 +200,7 @@ class _PixelClockCanvas(Component):
 
         # Draw date text centered below (bold, large enough to read)
         if has_date:
-            font = ctx.get_font("medium", bold=True)
+            font = ctx.get_font("large", bold=True)
             date_x = x + width // 2
             ctx.draw_text(self.date_str, (date_x, date_area_y), font, date_rgb, "mm")
 
@@ -276,5 +277,5 @@ class PixelClockWidget(Widget):
             time_str=time_str,
             date_str=date_str,
             digit_color=self.config.color or digit_color,
-            date_color=THEME_MUTED,
+            date_color=THEME_TEXT_SECONDARY,
         )
