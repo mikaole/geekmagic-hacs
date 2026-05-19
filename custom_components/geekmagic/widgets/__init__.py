@@ -19,16 +19,9 @@ from .progress import MultiProgressWidget, ProgressWidget
 from .status import StatusListWidget, StatusWidget
 from .text import TextWidget
 from .weather import WeatherWidget
-from .word_clock import WordClockWidget
 from .pixel_clock import PixelClockWidget
-from .system_monitor import SystemMonitorWidget
-from .analog_clock import AnalogClockWidget
-from .pihole_dashboard import PiholeDashboardWidget
 from .weather_card import WeatherCardWidget
-from .niu_road import NiuRoadWidget
-from .energy_graph import EnergyGraphWidget
 from .berlin_greeting import BerlinGreetingWidget
-from .server_stats import ServerStatsWidget
 
 __all__ = [
     "WIDGET_CLASSES",
@@ -49,16 +42,9 @@ __all__ = [
     "StatusWidget",
     "TextWidget",
     "WeatherWidget",
-    "WordClockWidget",
     "PixelClockWidget",
-    "SystemMonitorWidget",
-    "AnalogClockWidget",
-    "PiholeDashboardWidget",
     "WeatherCardWidget",
-    "NiuRoadWidget",
-    "EnergyGraphWidget",
     "BerlinGreetingWidget",
-    "ServerStatsWidget",
     "Widget",
     "WidgetConfig",
 ]
@@ -81,16 +67,9 @@ _ALL_WIDGETS: list[type[Widget]] = [
     StatusWidget,
     TextWidget,
     WeatherWidget,
-    WordClockWidget,
     PixelClockWidget,
-    SystemMonitorWidget,
-    AnalogClockWidget,
-    PiholeDashboardWidget,
     WeatherCardWidget,
-    NiuRoadWidget,
-    EnergyGraphWidget,
     BerlinGreetingWidget,
-    ServerStatsWidget,
 ]
 
 # Widget type string -> widget class mapping (derived from WIDGET_TYPE class attribute)
