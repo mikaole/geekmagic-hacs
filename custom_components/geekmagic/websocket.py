@@ -651,7 +651,7 @@ async def ws_preview_render(
 
             # Get weather forecast if available
             forecast: list[dict[str, Any]] = []
-            if widget_type == "weather" and entity_id in weather_forecasts:
+            if widget_type in _WEATHER_TYPES and entity_id in weather_forecasts:
                 forecast = weather_forecasts[entity_id]
 
             # Handle clock widget timezone override
