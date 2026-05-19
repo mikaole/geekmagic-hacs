@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, ClassVar
+from zoneinfo import ZoneInfo
 
 from .base import Widget, WidgetConfig
 from .colors import (
@@ -208,6 +209,11 @@ class WordClockWidget(Widget):
     def render(self, ctx: RenderContext, state: WidgetState) -> Component:
         """Render the word clock grid."""
         now = state.now or datetime.now(tz=UTC)
+        try:
+            tz = ZoneInfo(self.timezone) if self.timezone else ZoneInfo("Europe/Berlin")
+            now = now.astimezone(tz)
+        except Exception:
+            pass
         active_color = self._COLOR_MAP.get(self.color_scheme, THEME_TEXT_PRIMARY)
         return _WordClockGrid(
             hour=now.hour,

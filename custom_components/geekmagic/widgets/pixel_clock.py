@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, ClassVar
+from zoneinfo import ZoneInfo
 
 from .base import Widget, WidgetConfig
 from .colors import (
@@ -252,6 +253,12 @@ class PixelClockWidget(Widget):
     def render(self, ctx: RenderContext, state: WidgetState) -> Component:
         """Render the pixel art clock."""
         now = state.now or datetime.now(tz=UTC)
+        # Apply timezone: use configured tz, fallback to Europe/Berlin
+        try:
+            tz = ZoneInfo(self.timezone) if self.timezone else ZoneInfo("Europe/Berlin")
+            now = now.astimezone(tz)
+        except Exception:
+            pass
 
         fmt = "%I:%M" if self.time_format == "12h" else "%H:%M"
         time_str = now.strftime(fmt)

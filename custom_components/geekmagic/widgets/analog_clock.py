@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, ClassVar
+from zoneinfo import ZoneInfo
 
 from .base import Widget, WidgetConfig
 from .colors import (
@@ -156,6 +157,11 @@ class AnalogClockWidget(Widget):
 
     def render(self, ctx: RenderContext, state: WidgetState) -> Component:
         now = state.now or datetime.now(tz=UTC)
+        try:
+            tz = ZoneInfo(self.timezone) if self.timezone else ZoneInfo("Europe/Berlin")
+            now = now.astimezone(tz)
+        except Exception:
+            pass
         return _AnalogClockFace(
             hour=now.hour,
             minute=now.minute,

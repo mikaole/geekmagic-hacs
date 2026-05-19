@@ -111,30 +111,30 @@ class _NiuRoadCanvas(Component):
         padding = max(8, int(width * 0.06))
 
         # --- Top section: battery % (left) + range km (right) ---
-        pct_font = ctx.get_font("xlarge", bold=True)
+        pct_font = ctx.get_font("huge", bold=True)
         pct_str = f"{pct:.0f}%"
-        ctx.draw_text(pct_str, (x + padding, y + padding + 10), pct_font, text_primary, "lm")
+        ctx.draw_text(pct_str, (x + padding, y + padding + 16), pct_font, text_primary, "lm")
 
         if self.range_km is not None:
-            range_font = ctx.get_font("small", bold=False)
+            range_font = ctx.get_font("medium", bold=True)
             range_str = f"{self.range_km:.0f} km"
             ctx.draw_text(
                 range_str,
-                (x + width - padding, y + padding + 10),
+                (x + width - padding, y + padding + 16),
                 range_font,
                 text_secondary,
                 "rm",
             )
 
         # --- S-curve road ---
-        road_y_center = y + int(height * 0.55)
-        amplitude = int(height * 0.12)
-        road_x1 = x + padding + 4
-        road_x2 = x + width - padding - 4
+        road_y_center = y + int(height * 0.58)
+        amplitude = int(height * 0.18)
+        road_x1 = x + padding
+        road_x2 = x + width - padding
         path = _build_s_curve(road_x1, road_y_center, road_x2, amplitude, steps=60)
 
-        # Draw track (full S-curve, thick muted line)
-        road_width = max(6, int(height * 0.04))
+        # Draw track (full S-curve, chunky road)
+        road_width = max(8, int(height * 0.06))
         if len(path) >= 2:
             # Track
             for i in range(len(path) - 1):
@@ -156,20 +156,20 @@ class _NiuRoadCanvas(Component):
             # Scooter icon at the current position along the S-curve
             scooter_idx = min(fill_count, len(path) - 1)
             sx, sy = path[scooter_idx]
-            icon_size = max(18, int(height * 0.14))
-            ctx.draw_icon("moped", (sx - icon_size // 2, sy - icon_size - 2), icon_size, bar_color)
+            icon_size = max(24, int(height * 0.20))
+            ctx.draw_icon("moped", (sx - icon_size // 2, sy - icon_size - 4), icon_size, bar_color)
 
             # Flag at the end of the road (destination)
             ex, ey = path[-1]
-            flag_size = max(14, int(height * 0.11))
+            flag_size = max(20, int(height * 0.15))
             ctx.draw_icon(
-                "flag-checkered", (ex - flag_size // 2, ey - flag_size - 2), flag_size, text_tertiary
+                "flag-checkered", (ex - flag_size // 2, ey - flag_size - 4), flag_size, text_tertiary
             )
 
         # --- Lock status bottom-right ---
         lock_icon = "lock" if self.is_locked else "lock-open-variant"
         lock_color = resolve_theme_color(THEME_SUCCESS if self.is_locked else THEME_WARNING, ctx.theme)
-        lock_size = max(12, int(height * 0.09))
+        lock_size = max(16, int(height * 0.12))
         lock_x = x + width - padding - lock_size
         lock_y = y + height - padding - lock_size
         ctx.draw_icon(lock_icon, (lock_x, lock_y), lock_size, lock_color)
