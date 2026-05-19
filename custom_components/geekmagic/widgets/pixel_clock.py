@@ -159,10 +159,10 @@ class _PixelClockCanvas(Component):
         has_date = bool(self.date_str)
 
         # When date is off, time fills 100% and centers vertically.
-        # When date is on, time uses top 70%, date sits at 85%.
+        # When date is on, time uses top 68%, date sits at 82%.
         if has_date:
-            time_area_h = int(height * 0.70)
-            date_area_y = y + int(height * 0.85)
+            time_area_h = int(height * 0.68)
+            date_area_y = y + int(height * 0.82)
         else:
             time_area_h = height
             date_area_y = 0  # unused
@@ -197,9 +197,9 @@ class _PixelClockCanvas(Component):
                         )
             cursor_x += (4 + 1) * px  # 4 cols + 1 gap
 
-        # Draw date text centered below (bold, bigger)
+        # Draw date text centered below (bold, large enough to read)
         if has_date:
-            font = ctx.get_font("small", bold=True)
+            font = ctx.get_font("medium", bold=True)
             date_x = x + width // 2
             ctx.draw_text(self.date_str, (date_x, date_area_y), font, date_rgb, "mm")
 
