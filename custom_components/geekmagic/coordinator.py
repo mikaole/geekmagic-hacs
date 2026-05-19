@@ -1631,16 +1631,17 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         Uses the weather.get_forecasts service introduced in Home Assistant 2023.9,
         since the forecast attribute was removed from weather entities in 2024.3.
         """
-        # Find all weather widgets in current layout
+        # Find all weather widgets across ALL layouts (not just current screen)
+        # so forecasts are available for preview and screen rotation
         weather_entity_ids: set[str] = set()
 
-        if self._layouts and 0 <= self._current_screen < len(self._layouts):
-            layout = self._layouts[self._current_screen]
-            for slot in layout.slots:
-                if slot.widget and isinstance(slot.widget, _WEATHER_WIDGET_TYPES):
-                    entity_id = slot.widget.config.entity_id
-                    if entity_id:
-                        weather_entity_ids.add(entity_id)
+        if self._layouts:
+            for layout in self._layouts:
+                for slot in layout.slots:
+                    if slot.widget and isinstance(slot.widget, _WEATHER_WIDGET_TYPES):
+                        entity_id = slot.widget.config.entity_id
+                        if entity_id:
+                            weather_entity_ids.add(entity_id)
 
         if not weather_entity_ids:
             return
