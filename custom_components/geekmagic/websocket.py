@@ -547,8 +547,9 @@ async def ws_preview_render(
     # Pre-fetch forecast for weather widgets
     # Uses weather.get_forecasts service (required since HA 2024.3+)
     weather_forecasts: dict[str, list[dict[str, Any]]] = {}
+    _WEATHER_TYPES = {"weather", "weather_card", "berlin_greeting"}
     for widget_data in view_config.get("widgets", []):
-        if widget_data.get("type") == "weather":
+        if widget_data.get("type") in _WEATHER_TYPES:
             entity_id = widget_data.get("entity_id")
             if entity_id:
                 try:
