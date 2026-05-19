@@ -88,6 +88,10 @@ from .widgets.state import EntityState, WidgetState
 from .widgets.text import TextWidget
 from .widgets.theme import get_theme
 from .widgets.weather import WeatherWidget
+from .widgets.weather_card import WeatherCardWidget
+from .widgets.berlin_greeting import BerlinGreetingWidget
+
+_WEATHER_WIDGET_TYPES = (WeatherWidget, WeatherCardWidget, BerlinGreetingWidget)
 
 if TYPE_CHECKING:
     from .layouts.base import Layout
@@ -640,7 +644,7 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
 
             # Get pre-fetched weather forecast
             forecast: list[dict[str, Any]] = []
-            if isinstance(widget, WeatherWidget) and widget.config.entity_id:
+            if isinstance(widget, _WEATHER_WIDGET_TYPES) and widget.config.entity_id:
                 forecast = self._weather_forecasts.get(widget.config.entity_id, [])
 
             # Handle clock widget timezone override
@@ -1633,7 +1637,7 @@ class GeekMagicCoordinator(DataUpdateCoordinator):
         if self._layouts and 0 <= self._current_screen < len(self._layouts):
             layout = self._layouts[self._current_screen]
             for slot in layout.slots:
-                if slot.widget and isinstance(slot.widget, WeatherWidget):
+                if slot.widget and isinstance(slot.widget, _WEATHER_WIDGET_TYPES):
                     entity_id = slot.widget.config.entity_id
                     if entity_id:
                         weather_entity_ids.add(entity_id)

@@ -153,18 +153,24 @@ class _PixelClockCanvas(Component):
         digit_rgb = resolve_theme_color(self.digit_color, ctx.theme)
         date_rgb = resolve_theme_color(self.date_color, ctx.theme)
 
-        # Calculate pixel block size for "HH:MM" (5 chars × 4 wide = 20 cols + 4 gaps)
         chars = list(self.time_str)
         total_char_cols = len(chars) * 4 + (len(chars) - 1)  # 1-col gap between chars
         char_rows = 7
+        has_date = bool(self.date_str)
 
-        # Use top 65% for time, bottom 20% for date, 15% gap
-        time_area_h = int(height * 0.65)
-        date_area_y = y + int(height * 0.78)
+        # When date is off, time fills 100% and centers vertically.
+        # When date is on, time uses top 70%, date sits at 85%.
+        if has_date:
+            time_area_h = int(height * 0.70)
+            date_area_y = y + int(height * 0.85)
+        else:
+            time_area_h = height
+            date_area_y = 0  # unused
 
-        # Size each pixel block to fill the time area
-        px_w = max(1, (width - 2 * 8) // total_char_cols)
-        px_h = max(1, (time_area_h - 2 * 8) // char_rows)
+        # Minimal padding (4px) so digits fill more of the 240px canvas
+        pad = 4
+        px_w = max(1, (width - 2 * pad) // total_char_cols)
+        px_h = max(1, (time_area_h - 2 * pad) // char_rows)
         px = min(px_w, px_h)
 
         # Center the time block
@@ -191,10 +197,11 @@ class _PixelClockCanvas(Component):
                         )
             cursor_x += (4 + 1) * px  # 4 cols + 1 gap
 
-        # Draw date text centered below
-        font = ctx.get_font("tertiary", bold=False)
-        date_x = x + width // 2
-        ctx.draw_text(self.date_str, (date_x, date_area_y), font, date_rgb, "mm")
+        # Draw date text centered below (bold, bigger)
+        if has_date:
+            font = ctx.get_font("small", bold=True)
+            date_x = x + width // 2
+            ctx.draw_text(self.date_str, (date_x, date_area_y), font, date_rgb, "mm")
 
 
 class PixelClockWidget(Widget):

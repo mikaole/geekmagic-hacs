@@ -59,13 +59,13 @@ class _WeatherCardDisplay(Component):
         # Condition text, clean
         cond_text = self.condition.replace("-", " ").replace("_", " ").title()
 
-        icon_size = max(28, int(height * 0.22))
+        icon_size = max(32, int(height * 0.25))
 
         # Hero block: icon + temp + condition
         hero = Column(
             children=[
                 Icon(icon_name, size=icon_size, color=icon_tint),
-                Text(temp_str, font="xlarge", bold=True, color=THEME_TEXT_PRIMARY),
+                Text(temp_str, font="huge", bold=True, color=THEME_TEXT_PRIMARY),
                 Text(cond_text, font="small", color=THEME_TEXT_SECONDARY),
             ],
             gap=max(2, int(height * 0.015)),
@@ -78,7 +78,7 @@ class _WeatherCardDisplay(Component):
         forecast_component = None
         forecast_items = self.forecast[: self.forecast_days]
         if forecast_items:
-            forecast_icon_size = max(12, int(height * 0.10))
+            forecast_icon_size = max(16, int(height * 0.12))
             cols = []
             for i, day in enumerate(forecast_items):
                 day_cond = day.get("condition", "sunny")
@@ -104,9 +104,9 @@ class _WeatherCardDisplay(Component):
                 cols.append(
                     Column(
                         children=[
-                            Text(day_name.upper(), font="tiny", color=THEME_TEXT_SECONDARY),
+                            Text(day_name.upper(), font="small", color=THEME_TEXT_SECONDARY),
                             Icon(day_icon, size=forecast_icon_size, color=day_tint),
-                            Text(t_str, font="tiny", bold=True, color=THEME_TEXT_PRIMARY),
+                            Text(t_str, font="small", bold=True, color=THEME_TEXT_PRIMARY),
                         ],
                         gap=max(1, int(height * 0.015)),
                         align="center",

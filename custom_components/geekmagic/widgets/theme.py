@@ -470,6 +470,47 @@ THEME_LIQUID_GLASS = Theme(
     bar_background=(225, 225, 222),   # Warm frosted track
 )
 
+# 12. Liquid Glass Dark — same aesthetic, dark background for evening/night
+THEME_LIQUID_GLASS_DARK = Theme(
+    name="liquid_glass_dark",
+    primary=(118, 155, 195),          # Slightly brighter slate blue on dark
+    secondary=(155, 170, 150),        # Sage green — lifted for contrast
+    success=(130, 185, 145),          # Soft sage
+    warning=(205, 180, 120),          # Warm sand
+    error=(200, 115, 110),            # Muted terracotta
+    info=(118, 155, 195),             # Matches primary
+    muted=(95, 95, 90),              # Warm dark gray
+    background=(18, 20, 22),          # Near-black, warm tint
+    surface=(28, 30, 34),             # Dark glass panel
+    surface_variant=(38, 40, 44),     # Dark frosted divider
+    border=(50, 52, 56),              # Subtle dark edge
+    text_primary=(235, 235, 232),     # Warm off-white
+    text_secondary=(148, 150, 155),   # Mid-gray, warm
+    text_tertiary=(98, 100, 105),     # Low-contrast captions
+    text_on_primary=(18, 20, 22),     # Dark text on accent fills
+    accent_colors=(
+        (118, 155, 195),              # Slate blue
+        (155, 170, 150),              # Sage green
+        (205, 180, 120),              # Warm sand
+        (150, 175, 178),              # Soft teal
+        (165, 150, 175),              # Muted lavender
+        (185, 158, 130),              # Warm bronze
+    ),
+    corner_radius=16,
+    border_width=1,
+    border_style="solid",
+    layout_padding=6,
+    widget_padding=6,
+    gap=6,
+    value_bold=True,
+    label_weight="regular",
+    rounded_font=True,
+    surface_chrome=True,
+    tint_track=True,
+    tint_track_opacity=0.20,
+    bar_background=(35, 37, 40),
+)
+
 # 10. Candy — playful pastel (light variant)
 THEME_CANDY = Theme(
     name="candy",
@@ -523,6 +564,7 @@ THEMES: dict[str, Theme] = {
     "forest": THEME_FOREST,
     "candy": THEME_CANDY,
     "liquid_glass": THEME_LIQUID_GLASS,
+    "liquid_glass_dark": THEME_LIQUID_GLASS_DARK,
 }
 
 DEFAULT_THEME = THEME_WATCHOS
@@ -550,6 +592,7 @@ __all__ = [
     "THEME_CANDY",
     "THEME_CLASSIC",
     "THEME_LIQUID_GLASS",
+    "THEME_LIQUID_GLASS_DARK",
     "THEME_FOREST",
     "THEME_LIGHT",
     "THEME_MINIMAL",
